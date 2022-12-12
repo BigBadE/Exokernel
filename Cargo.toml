@@ -7,5 +7,10 @@ build = "build.rs"
 
 [workspace]
 members = [
-
+    # x86_64 BIOS Bootloader
+    "kernel/arch/x86_64/bootloader/bios",
+    "kernel/arch/x86_64/bootloader/bios/stage-1"
 ]
+
+[dependencies]
+x86_64-bootloader-bios = { path = "kernel/arch/x86_64/bootloader/bios", artifact = "bin", target = "x86_64-unknown-none" }

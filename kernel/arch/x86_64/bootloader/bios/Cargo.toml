@@ -1,0 +1,9 @@
+[package]
+name = "x86_64-bootloader-bios"
+version = "0.1.0"
+edition = "2021"
+
+build = "build.rs"
+
+[dependencies]
+x86_64-bootloader-bios-stage-1 = { path = "stage-1", artifact = "bin", target = "x86_64-unknown-none" }
