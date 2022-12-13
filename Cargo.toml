@@ -1,5 +1,5 @@
 [package]
-name = "Exokernel"
+name = "exokernel"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,10 +7,20 @@ build = "build.rs"
 
 [workspace]
 members = [
+    # File system
+    "lib/fs",
+
     # x86_64 BIOS Bootloader
     "kernel/arch/x86_64/bootloader/bios",
-    "kernel/arch/x86_64/bootloader/bios/stage-1"
+    "kernel/arch/x86_64/bootloader/bios/stage-1",
+
+    # Build utils
+    "lib/bios-util"
 ]
 
 [dependencies]
 x86_64-bootloader-bios = { path = "kernel/arch/x86_64/bootloader/bios", artifact = "bin", target = "x86_64-unknown-none" }
+
+[build-dependencies]
+bios-util = { path = "lib/bios-util" }
+fs = { path = "lib/fs", features = [ "std" ] }

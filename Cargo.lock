@@ -3,11 +3,21 @@
 version = 3
 
 [[package]]
-name = "Exokernel"
+name = "bios-util"
+version = "0.1.0"
+
+[[package]]
+name = "exokernel"
 version = "0.1.0"
 dependencies = [
+ "bios-util",
+ "fs",
  "x86_64-bootloader-bios",
 ]
+
+[[package]]
+name = "fs"
+version = "0.1.0"
 
 [[package]]
 name = "x86_64-bootloader-bios"
