@@ -5,5 +5,13 @@ edition = "2021"
 
 build = "build.rs"
 
-[dependencies]
-x86_64-bootloader-bios-stage-1 = { path = "stage-1", artifact = "bin", target = "x86_64-unknown-none" }
+[build-dependencies]
+[build-dependencies.x86_64-bootloader-bios-stage-1]
+path = "stage-1"
+artifact = "bin"
+target = "kernel/arch/x86_64/bootloader/bios/stage-1/target.json"
+
+[build-dependencies.x86_64-bootloader-bios-stage-2]
+path = "stage-2"
+artifact = "bin"
+target = "kernel/arch/x86_64/bootloader/bios/stage-1/target.json"

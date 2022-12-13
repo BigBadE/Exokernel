@@ -3,9 +3,10 @@ ENTRY(_start)
 SECTIONS {
     /* End of BIOS section */
     _stack_start = 0x500;
-    _stack_end = 0x1500;
+    _stack_end = 0x7c00;
 
     . = 0x7c00;
+    /* Boot record is loaded at 7c00 */
     _mbr_start = .;
     .boot :
     {
@@ -28,7 +29,7 @@ SECTIONS {
     _mbr_end = .;
 
     _partition_table = 0x7c00 + 446;
-    /* */
+    /* Magic number starts at 0x7c00 + 510 */
     . = 0x7c00 + 510;
 
     /* magic number for bootable disk */

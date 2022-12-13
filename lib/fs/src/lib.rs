@@ -1,4 +1,4 @@
-#![cfg_attr(not(std), no_std)]
+#![cfg_attr(std, no_std)]
 
 pub mod partition;
 pub mod structure;
