@@ -2,11 +2,12 @@
 
 pub mod partition;
 pub mod structure;
+pub mod allocator;
+pub mod bands;
+pub mod helper;
 
 pub trait Read {
-    fn read() {
-
-    }
+    fn read(&mut self, buffer: &mut [u8]) -> Option<usize>;
 }
 
 pub trait Write {
@@ -23,7 +24,9 @@ pub trait Seek {
 
 #[cfg(feature = "std")]
 impl Read for std::fs::File {
-
+    fn read(&mut self, buffer: &mut [u8]) -> Option<usize> {
+        return std::io::Read::read(self, buffer).ok();
+    }
 }
 
 #[cfg(feature = "std")]

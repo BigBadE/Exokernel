@@ -24,3 +24,13 @@ llvm-tools = "0.1.1"
 
 bios-util = { path = "lib/bios-util" }
 fs = { path = "lib/fs", features = [ "std" ] }
+
+[build-dependencies.x86_64-bootloader-bios]
+path = "kernel/arch/x86_64/bootloader/bios"
+artifact = "bin"
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"
