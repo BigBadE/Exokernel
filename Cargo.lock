@@ -31,7 +31,6 @@ name = "x86_64-bootloader-bios"
 version = "0.1.0"
 dependencies = [
  "x86_64-bootloader-bios-stage-1",
- "x86_64-bootloader-bios-stage-2",
 ]
 
 [[package]]

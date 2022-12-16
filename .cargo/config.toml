@@ -2,6 +2,3 @@
 # enable the unstable artifact-dependencies feature, see
 # https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#artifact-dependencies
 bindeps = true
-
-[build]
-target = "kernel/arch/x86_64/bootloader/bios/stage-1/target.json"
