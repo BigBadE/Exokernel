@@ -1,0 +1,10 @@
+{
+  "arch": "x86",
+  "llvm-target": "i686-unknown-none-code16",
+  "linker-flavor": "ld.lld",
+  "linker": "rust-lld",
+  "target-pointer-width": "32",
+  "data-layout": "e-m:e-p:32:32",
+  "panic-strategy": "abort",
+  "relocation-model": "static"
+}

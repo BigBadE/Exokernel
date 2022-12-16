@@ -1,15 +1,16 @@
 use crate::structure::Security::OwnerRead;
 
-pub struct FileHeader {
-    pub sector: u64,
-    pub name: [char; 256],
-    pub security: u16,
-}
-
 pub struct DirectoryHeader {
     pub sector: u64,
-    pub name: [char; 256],
     pub security: u16,
+    pub name: [char; 256]
+}
+
+pub struct FileHeader {
+    pub sector: u64,
+    pub security: u16,
+    pub info: u8,
+    pub name: [char; 256]
 }
 
 impl DirectoryHeader {
@@ -24,19 +25,13 @@ impl DirectoryHeader {
             security: OwnerRead as u16
         }
     }
-
-    pub fn new(name: &'static str, parent: DirectoryHeader, sector: u64) -> Self {
-        let mut name_arr = [0 as char; 256];
-        for i in 0..name.len().min(256) {
-            name_arr[i] = name.as_bytes()[i] as char;
-        }
-        return DirectoryHeader {
-            sector,
-            name: name_arr,
-            security: parent.security
-        }
-    }
 }
+
+pub enum Types {
+    File(FileHeader),
+    Directory(DirectoryHeader)
+}
+
 pub enum Security {
     OwnerRead = 0b100_000_000,
     OwnerWrite = 0b010_000_000,
