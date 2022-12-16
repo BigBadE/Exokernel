@@ -9,7 +9,7 @@ fn main() {
     let path = env::var("OUT_DIR").unwrap();
     let bios_path = Path::new(path.as_str()).join("bios");
 
-    build("x86_64-bootloader-bios", "x86_64-unknown-none");
+    //build("x86_64-bootloader-bios", "x86_64-unknown-none");
     //Build BIOS image
     let bios = BIOSImage::new(
         PathBuf::from(env::var("CARGO_BIN_FILE_x86_64-BOOTLOADER-BIOS-STAGE-1_x86_64-bootloader-bios-stage-1").unwrap()),

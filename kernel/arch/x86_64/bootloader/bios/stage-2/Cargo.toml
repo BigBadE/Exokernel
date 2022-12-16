@@ -1,3 +1,5 @@
+cargo-features = ["per-package-target"]
+
 [package]
 name = "x86_64-bootloader-bios-stage-2"
 version = "0.1.0"

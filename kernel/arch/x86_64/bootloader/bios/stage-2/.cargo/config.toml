@@ -1,6 +1,3 @@
 [unstable]
 build-std-features = ["compiler-builtins-mem"]
 build-std = ["core"]
-
-[build]
-target = "../../stage-1/target.json"

@@ -13,6 +13,7 @@ dependencies = [
  "bios-util",
  "fs",
  "llvm-tools",
+ "x86_64-bootloader-bios",
 ]
 
 [[package]]

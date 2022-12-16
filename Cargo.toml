@@ -24,3 +24,13 @@ llvm-tools = "0.1.1"
 
 bios-util = { path = "lib/bios-util" }
 fs = { path = "lib/fs", features = [ "std" ] }
+
+x86_64-bootloader-bios = { path = "kernel/arch/x86_64/bootloader/bios", artifact = "bin", target =  }
+
+[profile.stage-1]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+debug = false
+overflow-checks = false
