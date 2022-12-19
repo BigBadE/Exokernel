@@ -1,8 +1,10 @@
+use std::env;
+
 fn main() {
     // read env variables that were set in build script
-    let bios_path = env!("BIOS_PATH");
+    let bios_path = env::var("BIOS_PATH").unwrap();
 
-    let mut cmd = std::process::Command::new(env!("qemu").to_owned() + "\\qemu-system-x86_64");
+    let mut cmd = std::process::Command::new(env!("qemu").to_owned() + "\\qemu-system-x86_64.exe");
 
     cmd.arg("-drive").arg(format!("format=raw,file={}", bios_path));
     cmd.arg("-serial").arg("stdio");

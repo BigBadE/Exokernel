@@ -13,17 +13,17 @@ members = [
     # x86_64 BIOS Bootloader
     "kernel/arch/x86_64/bootloader/bios",
     "kernel/arch/x86_64/bootloader/bios/stage-1",
-    "kernel/arch/x86_64/bootloader/bios/stage-2",
-
-    # Build utils
-    "lib/bios-util"
+    "kernel/arch/x86_64/bootloader/bios/stage-2"
 ]
 
 [build-dependencies]
 llvm-tools = "0.1.1"
 
-bios-util = { path = "lib/bios-util" }
-fs = { path = "lib/fs", features = [ "std" ] }
+#File creation utils
+mbrman = "0.5.1"
+fs = { path = "lib/fs", features = ["std"] }
+
+anyhow = "1.0.67"
 
 [profile.stage-1]
 inherits = "release"
@@ -32,10 +32,6 @@ lto = true
 codegen-units = 1
 debug = false
 overflow-checks = false
-
-[build-dependencies.x86_64-bootloader-bios]
-path = "kernel/arch/x86_64/bootloader/bios"
-artifact = "bin"
 
 [profile.release]
 panic = "abort"

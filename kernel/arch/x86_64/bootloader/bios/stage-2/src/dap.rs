@@ -13,12 +13,12 @@ pub struct DAP {
 }
 
 impl DAP {
-    pub fn new(size: u16, buffer: *const u8, lba: u64) -> Self {
+    pub fn new(size: u16, buffer: *const [i32; 4096], lba: u64) -> Self {
         return DAP {
             size: 16,
             zero: 0,
             sectors: size as u16,
-            buffer: (((buffer as u64 >> 32) as u32) << 16) + (buffer as u64 & 0xFF),
+            buffer: (((buffer as u64 >> 32) as u32) << 16) + (buffer as u32 & 0xFF),
             lower_lba: (lba & 0xFFFF) as u32,
             upper_lba: ((lba & 0xFF0000) >> 32) as u32
         }

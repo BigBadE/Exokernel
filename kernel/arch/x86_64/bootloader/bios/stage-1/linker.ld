@@ -26,9 +26,8 @@ SECTIONS {
         *(.data .data.*)
         *(.got .got.*)
     }
-    _mbr_end = .;
 
-    _partition_table = 0x7c00 + 446;
+    _partition_table = 0x7c00 + 440;
     /* Magic number starts at 0x7c00 + 510 */
     . = 0x7c00 + 510;
 

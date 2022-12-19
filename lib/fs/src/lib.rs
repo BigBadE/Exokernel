@@ -1,10 +1,13 @@
-#![cfg_attr(std, no_std)]
+#![cfg_attr(not(std), no_std)]
 
 pub mod partition;
 pub mod structure;
 pub mod allocator;
 pub mod bands;
 pub mod helper;
+
+#[cfg(feature = "std")]
+extern crate std;
 
 pub trait Read {
     fn read(&mut self, buffer: &mut [u8]) -> Option<usize>;

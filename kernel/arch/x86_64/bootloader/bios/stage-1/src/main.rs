@@ -14,7 +14,8 @@ pub extern "C" fn first_stage(disk_number: u16) {
 pub fn print(message: &'static str) {
     unsafe {
         for char in message.bytes() {
-            asm!("mov ah, 0xE", "int 0x10")
+            let char = char as u16 | 0xE00;
+            asm!("push bx", "mov bx, 0", "int 0x10", "pop bx", in("ax") char)
         }
     }
 }

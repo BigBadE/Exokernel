@@ -9,6 +9,9 @@ Linked-list filesystem with emphasis on fast iteration.
 - Files are stored sequentially if possible, to minimize seeking.
 - Read only mode allows no heap usage for early kernel stage use.
 
+# Header
+Partitions start with the header 0xCA5CADE
+
 # Bands
 There are 10 bands total, each with two band file tables.
 Bands are placed at exact intervals along the drive, so no master file table is needed.

@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(lang_items)]
 use core::arch::asm;
+use core::ptr;
 use crate::dap::DAP;
 
 mod dap;
@@ -11,7 +12,7 @@ pub extern "C" fn second_stage() {
     print("Testing!");
 
     let buffer = [0; 512*8];
-    let packet = DAP::new(8, buffer as *const u8, 1);
+    let packet = DAP::new(8, ptr::addr_of!(buffer), 1);
 
 }
 
