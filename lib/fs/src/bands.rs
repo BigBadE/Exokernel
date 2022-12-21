@@ -1,6 +1,6 @@
 use crate::helper::LoadingLinkedList;
 use crate::{Read, Seek, Write};
-use crate::structure::{FileHeader, Types};
+use crate::structure::Types;
 
 pub struct BandTop<'a, T: Read + Write + Seek> {
     file_loader: LoadingLinkedList<'a, T, Types>,

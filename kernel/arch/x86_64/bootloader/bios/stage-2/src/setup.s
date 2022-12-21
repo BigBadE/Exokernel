@@ -1,4 +1,5 @@
 _begin:
+    int 0x10
     jmp enable_a20
 test_a20:
     # Test A20 line

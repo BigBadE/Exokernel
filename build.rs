@@ -50,7 +50,7 @@ impl BIOSImage {
         {
             let mut disk = File::create(disk.clone())?;
             disk.write(&[0xC, 0xA, 0x5, 0xC, 0xA, 0xD, 0xE])?;
-            let partition = Partition::new(disk, false);
+            let partition = Partition::new(disk);
             setup(partition);
         }
 

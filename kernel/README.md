@@ -1,9 +1,9 @@
 # Design
 
 Memory map:
-0xF00000000 - Kernel code
-0xE00000000 - Kernel heap
-0xD00000000 - Daemon handler
+0xFFF000000 - Kernel code
+0xFFE000000 - Kernel heap
+0xFFD000000 - Daemon handler
 
 Kernel -
 [ ] - Serial logging

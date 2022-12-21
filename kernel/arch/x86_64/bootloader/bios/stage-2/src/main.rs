@@ -8,7 +8,7 @@ use crate::dap::DAP;
 pub mod dap;
 pub mod partitions;
 
-global_asm!(include_str!("setup.s"));
+//global_asm!(include_str!("setup.s"));
 
 #[no_mangle]
 pub extern "C" fn second_stage(disk_number: u16, partition_table: *const u8) {
