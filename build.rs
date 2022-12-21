@@ -11,10 +11,15 @@ fn main() {
     let path = Path::new(path.as_str());
     let bios_path = path.clone().join("bios").join("bios.img");
 
+    let second_stage =
+        build("x86_64-bootloader-bios-stage-2", "kernel/arch/x86_64/bootloader/bios/stage-2",
+              "target.json", "release", vec!(), path);
+    let first_stage =
+        build("x86_64-bootloader-bios-stage-1", "kernel/arch/x86_64/bootloader/bios/stage-1",
+              "target.json", "stage-1", vec!(("second_stage_length",
+                                              &*format!("{}", (File::open(&second_stage).unwrap().metadata().unwrap().len() - 1) / 512 + 1))), path);
     //Build BIOS image
-    BIOSImage::new(path,
-                   build("x86_64-bootloader-bios-stage-1", "kernel/arch/x86_64/bootloader/bios/stage-1", "target.json", "stage-1", path),
-                   build("x86_64-bootloader-bios-stage-2", "kernel/arch/x86_64/bootloader/bios/stage-2", "target.json", "release", path),
+    BIOSImage::new(path, first_stage, second_stage,
                    |partition| {}).unwrap().write(bios_path.clone()).unwrap();
     println!(
         "cargo:rustc-env=BIOS_PATH={}",
@@ -69,7 +74,7 @@ impl BIOSImage {
     }
 }
 
-fn build(name: &str, path: &str, target: &str, profile: &str, out_dir: &Path) -> PathBuf {
+fn build(name: &str, path: &str, target: &str, profile: &str, envs: Vec<(&str, &str)>, out_dir: &Path) -> PathBuf {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let mut cmd = Command::new(cargo);
     cmd.arg("install").arg(name.clone());
@@ -78,6 +83,9 @@ fn build(name: &str, path: &str, target: &str, profile: &str, out_dir: &Path) ->
     cmd.arg("--target").arg(format!("{}/{}", path, target));
     cmd.arg("--root").arg(out_dir);
     cmd.arg("--profile").arg(profile);
+    for (key, value) in envs {
+        cmd.env(key, value);
+    }
     cmd.env_remove("RUSTFLAGS");
     cmd.env_remove("CARGO_ENCODED_RUSTFLAGS");
     let status = cmd

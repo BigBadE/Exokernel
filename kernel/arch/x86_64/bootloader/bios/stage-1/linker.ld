@@ -27,7 +27,6 @@ SECTIONS {
         *(.got .got.*)
     }
 
-    _partition_table = 0x7c00 + 440;
     /* Magic number starts at 0x7c00 + 510 */
     . = 0x7c00 + 510;
 
@@ -37,5 +36,5 @@ SECTIONS {
         SHORT(0xaa55)
     }
 
-    _second_stage_start = .;
+    _second_stage = .;
 }

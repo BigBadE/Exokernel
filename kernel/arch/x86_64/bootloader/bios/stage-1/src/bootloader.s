@@ -1,3 +1,4 @@
+.section .boot, "awx"
 .global _start
 .code16
 
@@ -10,18 +11,11 @@ _start:
     # Setup Stack
     mov sp, 0x7c00
 
+    # Clear direction flag
+    cld
+
     # Disable interrupts
     cli
-
-    # Test A20 line
-    mov ds, 0xFFFF
-    mov si, 7E0E
-
-    cmp byte [ds:si], 0xAA55
-    je enable_a20
-    jump finish_a20
-enable_a20:
-
-finish_a20:
 rust:
+    push di
     call first_stage

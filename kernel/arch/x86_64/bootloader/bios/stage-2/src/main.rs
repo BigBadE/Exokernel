@@ -1,34 +1,34 @@
 #![no_std]
 #![no_main]
-#![feature(lang_items)]
-use core::arch::asm;
+#![feature(panic_info_message)]
+use core::arch::{asm, global_asm};
 use core::ptr;
 use crate::dap::DAP;
 
-mod dap;
+pub mod dap;
+pub mod partitions;
+
+global_asm!(include_str!("setup.s"));
 
 #[no_mangle]
-pub extern "C" fn second_stage() {
-    print("Testing!");
-
-    let buffer = [0; 512*8];
-    let packet = DAP::new(8, ptr::addr_of!(buffer), 1);
-
+pub extern "C" fn second_stage(disk_number: u16, partition_table: *const u8) {
+    print("Entered stage 2");
 }
 
 pub fn print(message: &'static str) {
     unsafe {
         for char in message.bytes() {
-            asm!("mov ah, 0xE", "int 0x10")
+            let char = char as u16 | 0xE00;
+            asm!("push bx", "mov bx, 0", "int 0x10", "pop bx", in("ax") char);
         }
+
+        let char = '\n' as u16 | 0xE00;
+        asm!("push bx", "mov bx, 0", "int 0x10", "pop bx", in("ax") char);
     }
 }
 
 #[panic_handler]
-pub fn panic(_info: &core::panic::PanicInfo) -> ! {
-    print("Panic!");
+pub fn panic(info: &core::panic::PanicInfo) -> ! {
+    print(info.message().unwrap().as_str().unwrap());
     loop {}
 }
-
-#[lang = "eh_personality"]
-pub fn ignored() {}
