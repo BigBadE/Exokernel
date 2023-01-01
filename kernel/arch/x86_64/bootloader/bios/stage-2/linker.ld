@@ -1,12 +1,12 @@
-ENTRY(_start)
+ENTRY(second_stage)
 
 SECTIONS {
     /* Start of second stage */
     . = 0x7E00;
 
-    .start :
+    .second_stage :
     {
-        *(.start)
+        *(.second_stage)
     }
     .text :
     {
@@ -29,4 +29,6 @@ SECTIONS {
     }
 
     . = ALIGN(512);
+
+    second_end = .;
 }
