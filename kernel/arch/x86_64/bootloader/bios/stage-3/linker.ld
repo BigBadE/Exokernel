@@ -1,40 +1,34 @@
 ENTRY(_start)
 
 SECTIONS {
-    /* End of BIOS section */
-    _stack_start = 0x500;
-    _stack_end = 0x7c00;
+    /* Start of third stage */
+    . = 0x10000;
 
-    . = 0x7c00;
-    /* Boot record is loaded at 7c00 */
-    _mbr_start = .;
-    .boot :
+    .third_stage :
     {
-        *(.boot .boot.*)
+        *(.sthird_stage)
     }
     .text :
     {
         *(.text .text.*)
     }
-    .rodata :
-    {
+    .bss : {
+        *(.bss .bss.*)
+    }
+    .rodata : {
         *(.rodata .rodata.*)
     }
-    .data :
-    {
-        *(.rodata .rodata.*)
+    .data : {
         *(.data .data.*)
-        *(.got .got.*)
+    }
+    .eh_frame : {
+        *(.eh_frame .eh_frame.*)
+    }
+    .eh_frame_hdr : {
+        *(.eh_frame_hdr .eh_frame_hdr.*)
     }
 
-    /* Magic number starts at 0x7c00 + 510 */
-    . = 0x7c00 + 510;
+    . = ALIGN(512);
 
-    /* magic number for bootable disk */
-    .magic_number :
-    {
-        SHORT(0xaa55)
-    }
-
-    second_stage = .;
+    second_end = .;
 }

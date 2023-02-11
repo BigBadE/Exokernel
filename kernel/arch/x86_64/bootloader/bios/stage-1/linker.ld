@@ -36,5 +36,5 @@ SECTIONS {
         SHORT(0xaa55)
     }
 
-    _second_stage = .;
+    second_stage = .;
 }

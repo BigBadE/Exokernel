@@ -4,5 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
+default = ["std"]
+kernel = ["read-only"]
 std = []
 read-only = []

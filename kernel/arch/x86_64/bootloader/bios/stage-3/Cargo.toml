@@ -1,5 +1,5 @@
 [package]
-name = "x86_64-bootloader-bios-stage-1"
+name = "x86_64-bootloader-bios-stage-3"
 version = "0.1.0"
 edition = "2021"
 

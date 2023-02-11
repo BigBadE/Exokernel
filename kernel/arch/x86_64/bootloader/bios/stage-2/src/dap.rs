@@ -1,36 +1,44 @@
 use core::arch::asm;
 use core::{ptr, slice};
+use crate::{print, println};
+use crate::util::print::{printhex, printnumb};
 
 #[derive(Clone)]
 pub struct DiskRead {
-    //64KiB buffer used for reading bigger areas.
-    buffer: u32,
+    base: u64,
     head: u64,
-    disk: u16,
+    disk: u16
 }
 
 impl DiskRead {
-    pub fn new(buffer: u32, head: u64, disk: u16) -> Self {
+    pub fn new(base: u64, disk: u16) -> Self {
         return DiskRead {
-            buffer,
-            head,
+            base,
+            head: base,
             disk,
         };
     }
 
     pub fn read(&mut self, buffer: &mut [u8]) -> Option<usize> {
-        return self.read_len(buffer.len(), buffer);
+        let mut temp_buffer = [0u8; 512];
+        let value = self.read_len(buffer.len(), &mut temp_buffer);
+        unsafe {
+            ptr::copy_nonoverlapping(temp_buffer.as_ptr_range().start, buffer.as_mut_ptr_range().start, buffer.len());
+        }
+        return value;
     }
 
     pub fn read_len(&mut self, mut size: usize, buffer: &mut [u8]) -> Option<usize> {
-        let mut buffer = ptr::addr_of!(buffer) as u32;
-
+        assert_eq!(buffer.len() % 512, 0);
+        let mut buffer = buffer.as_ptr_range().start as u32;
         while size > 0 {
-            let len = size.min(0xFFFF);
-            unsafe {
-                DAP::new(len as u16, self.buffer, self.head).load(self.disk);
-                ptr::copy_nonoverlapping(self.buffer as *const u8,buffer as *mut u8, len);
-            }
+            //Get the offset (from (0, 512)) on the LBA
+            let offset = (self.head & 0x1FF) as u32;
+            //Subtract the offset from the length
+            let len = size.min((0xFFFF - offset) as usize);
+            //Get the LBA from the head and read it
+            DAP::new(((len - 1) / 512 + 1) as u16, buffer, self.head >> 9).load(self.disk);
+            self.head += len as u64;
             size -= len;
             buffer += len as u32;
         }
@@ -38,7 +46,7 @@ impl DiskRead {
     }
 
     pub fn seek(&mut self, seeking: u64) {
-        self.head = seeking / 512;
+        self.head = self.base + seeking;
     }
 }
 
@@ -70,17 +78,19 @@ impl DAP {
         };
     }
 
-    pub unsafe fn load(&self, disk_number: u16) {
+    pub fn load(&self, disk_number: u16) {
         let address = self as *const DAP as u16;
-        asm!(
-        "mov {1:x}, si",
-        "mov si, {0:x}",
-        "int 0x13",
-        "jc fail",
-        "mov si, {1:x}",
-        in(reg) address,
-        out(reg) _,
-        in("ah") 0x42u8,
-        in("dl") disk_number as u8);
+        unsafe {
+            asm!(
+            "mov {1:x}, si",
+            "mov si, {0:x}",
+            "int 0x13",
+            "jc fail",
+            "mov si, {1:x}",
+            in(reg) address,
+            out(reg) _,
+            in("ah") 0x42u8,
+            in("dl") disk_number as u8);
+        }
     }
 }

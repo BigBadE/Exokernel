@@ -13,9 +13,6 @@ _start:
 
     # Clear direction flag
     cld
-
-    # Disable interrupts
-    cli
 rust:
-    push di
+    push dx
     call first_stage

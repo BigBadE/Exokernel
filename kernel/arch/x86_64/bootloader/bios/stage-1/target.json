@@ -6,5 +6,6 @@
   "target-pointer-width": "32",
   "data-layout": "e-m:e-p:32:32",
   "panic-strategy": "abort",
+  "target-endian": "little",
   "relocation-model": "static"
 }

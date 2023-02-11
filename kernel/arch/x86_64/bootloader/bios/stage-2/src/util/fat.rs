@@ -2,7 +2,8 @@
 // based on https://crates.io/crates/mini_fat by https://github.com/gridbugs
 
 use core::char::DecodeUtf16Error;
-use crate::DiskRead;
+use crate::{DiskRead, println};
+use crate::util::print::{print, printcharbuf, printhex, printhexbuf, printnumb};
 
 const DIRECTORY_ENTRY_BYTES: usize = 32;
 const UNUSED_ENTRY_PREFIX: u8 = 0xE5;
@@ -61,6 +62,7 @@ impl Bpb {
             fat_size_32 = 0;
             root_cluster = 0;
         } else {
+            printcharbuf(&raw);
             panic!("ExactlyOneTotalSectorsFieldMustBeZero");
         }
 
@@ -229,6 +231,9 @@ impl FileSystem {
     }
 
     pub fn file_clusters<'a>(&'a mut self, file: &File) -> impl Iterator<Item = Result<Cluster, ()>> + 'a {
+        print("First cluster: ");
+        printnumb(file.first_cluster);
+        println("");
         Traverser {
             current_entry: file.first_cluster,
             bpb: &self.bpb,
@@ -252,23 +257,31 @@ struct Traverser<'a> {
 
 impl Traverser<'_> {
     fn next_cluster(&mut self) -> Result<Option<Cluster>, ()> {
+        printnumb(self.current_entry);
+        println(" trying");
         let entry = classify_fat_entry(
             self.bpb.fat_type(),
             self.current_entry,
             self.bpb.maximum_valid_cluster(),
         )
             .map_err(|_| ())?;
+        println("Yep");
         let entry = match entry {
             FileFatEntry::AllocatedCluster(cluster) => cluster,
-            FileFatEntry::EndOfFile => return Ok(None),
+            FileFatEntry::EndOfFile => {
+                println("Failed!");
+                return Ok(None)
+            },
         };
         let cluster_start =
             self.bpb.data_offset() + (u64::from(entry) - 2) * self.bpb.bytes_per_cluster() as u64;
+        println("Loading");
         let next_entry =
             fat_entry_of_nth_cluster(self.disk, self.bpb.fat_type(), self.bpb.fat_offset(), entry);
         let index = self.current_entry;
         self.current_entry = next_entry;
 
+        println("Loading 2");
         Ok(Some(Cluster {
             index,
             start_offset: cluster_start,
@@ -281,7 +294,7 @@ impl Iterator for Traverser<'_> {
     type Item = Result<Cluster, ()>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.next_cluster().transpose()
+        return self.next_cluster().transpose();
     }
 }
 

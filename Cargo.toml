@@ -12,7 +12,8 @@ members = [
 
     # x86_64 BIOS Bootloader
     "kernel/arch/x86_64/bootloader/bios/stage-1",
-    "kernel/arch/x86_64/bootloader/bios/stage-2"
+    "kernel/arch/x86_64/bootloader/bios/stage-2",
+    "kernel/arch/x86_64/bootloader/bios/stage-3"
 ]
 
 [build-dependencies]
@@ -20,12 +21,10 @@ llvm-tools = "0.1.1"
 
 #File creation utils
 mbrman = "0.5.1"
-fs = { path = "lib/fs", features = ["std"] }
+fatfs = "0.3.5"
+# fs = { path = "lib/fs" }
 
 anyhow = "1.0.67"
-
-x86_64-bootloader-bios-stage-1 = { path = "kernel/arch/x86_64/bootloader/bios/stage-1" }
-x86_64-bootloader-bios-stage-2 = { path = "kernel/arch/x86_64/bootloader/bios/stage-2" }
 
 [profile.stage-1]
 inherits = "release"

@@ -5,13 +5,13 @@ use core::mem::size_of;
 pub struct GDT {
     pub empty: u64,
     pub code: u64,
-    pub data: u64,
+    pub data: u64
 }
 
-#[repr(C)]
+#[repr(C, packed(2))]
 pub struct GDTPointer {
     pub length: u16,
-    pub base: *const GDT,
+    pub base: *const GDT
 }
 
 impl GDT {
@@ -57,7 +57,7 @@ impl GDT {
         "sti");
     }
 
-    /*pub unsafe fn enter_protected_jump(jumping: u32, args: u32) -> ! {
+    pub unsafe fn enter_protected_jump(jumping: u32, args: u32) -> ! {
         asm!(
         //Disable interrupts
         "cli",
@@ -84,5 +84,5 @@ impl GDT {
         loop {
             asm!("hlt");
         }
-    }*/
+    }
 }

@@ -8,6 +8,15 @@ fn main() {
 
     cmd.arg("-drive").arg(format!("format=raw,file={}", bios_path));
     cmd.arg("-serial").arg("stdio");
+
+    //QEMU GDB debug
+    //cmd.arg("-s").arg("-S");
+    //BIOS debug
+    //cmd.arg("-chardev").arg("stdio,id=seabios");
+    //cmd.arg("-device").arg("isa-debugcon,iobase=0x402,chardev=seabios");
+    //cmd.arg("-trace").arg("enable=ide_*");
+
+    println!("Running {}", bios_path);
     let mut child = cmd.spawn().unwrap();
     child.wait().unwrap();
 }

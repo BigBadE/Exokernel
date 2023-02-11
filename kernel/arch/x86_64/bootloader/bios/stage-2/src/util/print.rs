@@ -29,12 +29,7 @@ pub fn printhex(mut number: u32) {
     let mut stack: [u8; 10] = [0; 10];
     let mut i = 0;
     while number > 0 {
-        let adding = (number % 16) as u8;
-        if adding > 9 {
-            stack[i] = b'A' + adding - 10;
-        } else {
-            stack[i] = b'0' + adding;
-        }
+        stack[i] = to_hex((number % 16) as u8);
         i += 1;
         number /= 16;
     }
@@ -45,6 +40,42 @@ pub fn printhex(mut number: u32) {
             break;
         } else {
             i -= 1;
+        }
+    }
+}
+
+fn to_hex(value: u8) -> u8 {
+    return if value > 9 {
+        b'A' + value - 10
+    } else {
+        b'0' + value
+    }
+}
+
+pub fn printhexbuf(buf: &[u8]) {
+    let mut out = 0;
+    for i in 0..buf.len() {
+        print_char(to_hex(buf[i] & 0x0F));
+        print_char(to_hex((buf[i] & 0xF0) >> 4));
+        print_char(b' ');
+        out += 1;
+        if out == 24 {
+            print_char(b'\n');
+            print_char(b'\r');
+            out = 0;
+        }
+    }
+}
+
+pub fn printcharbuf(buf: &[u8]) {
+    let mut out = 0;
+    for i in 0..buf.len() {
+        print_char(buf[i]);
+        out += 1;
+        if out == 32 {
+            print_char(b'\n');
+            print_char(b'\r');
+            out = 0;
         }
     }
 }
