@@ -2,16 +2,18 @@
 // based on https://crates.io/crates/mini_fat by https://github.com/gridbugs
 
 use core::char::DecodeUtf16Error;
-use crate::{DiskRead, println};
-use crate::util::print::{print, printcharbuf, printhex, printhexbuf, printnumb};
+use core::fmt::{Formatter, write};
+use crate::DiskRead;
+use crate::util::print;
+use crate::util::print::{print, println, printnumb};
 
 const DIRECTORY_ENTRY_BYTES: usize = 32;
 const UNUSED_ENTRY_PREFIX: u8 = 0xE5;
 const END_OF_DIRECTORY_PREFIX: u8 = 0;
 
 pub struct File {
-    first_cluster: u32,
-    file_size: u32,
+    pub first_cluster: u32,
+    pub file_size: u32,
 }
 
 impl File {
@@ -36,9 +38,7 @@ struct Bpb {
 impl Bpb {
     fn parse(disk: &mut DiskRead) -> Self {
         disk.seek(0);
-        let mut raw: [u8; 512] = [0; 512];
-
-        disk.read(&mut raw);
+        let mut raw = disk.read(512);
 
         let bytes_per_sector = u16::from_le_bytes(raw[11..13].try_into().unwrap());
         let sectors_per_cluster = raw[13];
@@ -62,7 +62,6 @@ impl Bpb {
             fat_size_32 = 0;
             root_cluster = 0;
         } else {
-            printcharbuf(&raw);
             panic!("ExactlyOneTotalSectorsFieldMustBeZero");
         }
 
@@ -164,51 +163,54 @@ impl FileSystem {
     pub fn find_file_in_root_dir<const LEN: usize>(
         &mut self,
         name: &str,
-        buffer: &mut [u8; LEN]
+        buffer: &mut [u8; LEN],
     ) -> Option<File> {
         let mut root_entries = self.read_root_dir(buffer).filter_map(|e| e.ok());
         let raw_entry = root_entries.find(|e| e.eq_name(name))?;
 
         let entry = match raw_entry {
-            RawDirectoryEntry::Normal(entry) => DirectoryEntry {
-                short_name: entry.short_filename_main,
-                short_name_extension: entry.short_filename_extension,
-                long_name_1: &[],
-                long_name_2: &[],
-                long_name_3: &[],
-                file_size: entry.file_size,
-                first_cluster: entry.first_cluster,
-                attributes: entry.attributes,
-            },
-            RawDirectoryEntry::LongName(long_name) => match root_entries.next() {
-                Some(RawDirectoryEntry::LongName(_)) => unimplemented!(),
-                Some(RawDirectoryEntry::Normal(entry)) => DirectoryEntry {
+            RawDirectoryEntry::Normal(entry) =>
+                DirectoryEntry {
                     short_name: entry.short_filename_main,
                     short_name_extension: entry.short_filename_extension,
-                    long_name_1: long_name.name_1,
-                    long_name_2: long_name.name_2,
-                    long_name_3: long_name.name_3,
+                    long_name_1: &[],
+                    long_name_2: &[],
+                    long_name_3: &[],
                     file_size: entry.file_size,
                     first_cluster: entry.first_cluster,
                     attributes: entry.attributes,
                 },
+            RawDirectoryEntry::LongName(long_name) => match root_entries.next() {
+                Some(RawDirectoryEntry::LongName(_)) => unimplemented!(),
+                Some(RawDirectoryEntry::Normal(entry)) => {
+                    DirectoryEntry {
+                        short_name: entry.short_filename_main,
+                        short_name_extension: entry.short_filename_extension,
+                        long_name_1: long_name.name_1,
+                        long_name_2: long_name.name_2,
+                        long_name_3: long_name.name_3,
+                        file_size: entry.file_size,
+                        first_cluster: entry.first_cluster,
+                        attributes: entry.attributes,
+                    }
+                }
                 None => {
                     panic!("next none");
                 }
             },
         };
 
-        if entry.is_directory() {
+        return if entry.is_directory() {
             None
         } else {
             Some(File {
                 first_cluster: entry.first_cluster,
                 file_size: entry.file_size,
             })
-        }
+        };
     }
 
-    fn read_root_dir<'a, const LEN: usize>(&'a mut self, buffer: &'a mut [u8; LEN]) -> impl Iterator<Item = Result<RawDirectoryEntry, ()>> + 'a {
+    fn read_root_dir<'a, const LEN: usize>(&'a mut self, buffer: &'a mut [u8; LEN]) -> impl Iterator<Item=Result<RawDirectoryEntry, ()>> + 'a {
         match self.bpb.fat_type() {
             FatType::Fat32 => {
                 // self.bpb.root_cluster;
@@ -217,8 +219,8 @@ impl FileSystem {
             FatType::Fat12 | FatType::Fat16 => {
                 let root_directory_size = self.bpb.root_directory_size();
 
-                self.disk
-                    .seek(self.bpb.root_directory_offset());
+                self.disk.seek(self.bpb.root_directory_offset());
+
                 self.disk.read_len(root_directory_size, buffer);
 
                 buffer
@@ -230,14 +232,11 @@ impl FileSystem {
         }
     }
 
-    pub fn file_clusters<'a>(&'a mut self, file: &File) -> impl Iterator<Item = Result<Cluster, ()>> + 'a {
-        print("First cluster: ");
-        printnumb(file.first_cluster);
-        println("");
+    pub fn file_clusters<'a>(&'a mut self, file: &File) -> impl Iterator<Item=Result<Cluster, ()>> + 'a {
         Traverser {
             current_entry: file.first_cluster,
             bpb: &self.bpb,
-            disk: &mut self.disk
+            disk: &mut self.disk,
         }
     }
 }
@@ -257,31 +256,22 @@ struct Traverser<'a> {
 
 impl Traverser<'_> {
     fn next_cluster(&mut self) -> Result<Option<Cluster>, ()> {
-        printnumb(self.current_entry);
-        println(" trying");
         let entry = classify_fat_entry(
             self.bpb.fat_type(),
             self.current_entry,
-            self.bpb.maximum_valid_cluster(),
-        )
+            self.bpb.maximum_valid_cluster())
             .map_err(|_| ())?;
-        println("Yep");
         let entry = match entry {
             FileFatEntry::AllocatedCluster(cluster) => cluster,
-            FileFatEntry::EndOfFile => {
-                println("Failed!");
-                return Ok(None)
-            },
+            FileFatEntry::EndOfFile => return Ok(None),
         };
         let cluster_start =
             self.bpb.data_offset() + (u64::from(entry) - 2) * self.bpb.bytes_per_cluster() as u64;
-        println("Loading");
         let next_entry =
             fat_entry_of_nth_cluster(self.disk, self.bpb.fat_type(), self.bpb.fat_offset(), entry);
         let index = self.current_entry;
         self.current_entry = next_entry;
 
-        println("Loading 2");
         Ok(Some(Cluster {
             index,
             start_offset: cluster_start,
@@ -355,7 +345,7 @@ struct RawDirectoryEntryLongName<'a> {
 }
 
 impl<'a> RawDirectoryEntryLongName<'a> {
-    pub fn name(&self) -> impl Iterator<Item = Result<char, DecodeUtf16Error>> + 'a {
+    pub fn name(&self) -> impl Iterator<Item=Result<char, DecodeUtf16Error>> + 'a {
         let iter = self
             .name_1
             .chunks(2)
@@ -483,22 +473,22 @@ fn fat_entry_of_nth_cluster(disk: &mut DiskRead, fat_type: FatType, fat_start: u
         FatType::Fat32 => {
             let base = n as u64 * 4;
             disk.seek(fat_start + base);
-            let mut buf: [u8; 4] = [0; 4];
-            disk.read(&mut buf);
+            let buf = disk.read(4);
+            let buf: [u8; 4] = buf.try_into().unwrap();
             u32::from_le_bytes(buf) & 0x0FFFFFFF
         }
         FatType::Fat16 => {
             let base = n as u64 * 2;
             disk.seek(fat_start + base);
-            let mut buf: [u8; 2] = [0; 2];
-            disk.read(&mut buf);
+            let buf = disk.read(2);
+            let buf: [u8; 2] = buf.try_into().unwrap();
             u16::from_le_bytes(buf) as u32
         }
         FatType::Fat12 => {
             let base = n as u64 + (n as u64 / 2);
             disk.seek(fat_start + base);
-            let mut buf: [u8; 2] = [0; 2];
-            disk.read(&mut buf);
+            let buf = disk.read(2);
+            let buf: [u8; 2] = buf.try_into().unwrap();
             let entry16 = u16::from_le_bytes(buf);
             if n & 1 == 0 {
                 (entry16 & 0xFFF) as u32

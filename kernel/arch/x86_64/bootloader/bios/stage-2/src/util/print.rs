@@ -1,12 +1,15 @@
 use core::arch::asm;
 
-pub fn print(message: &'static str) {
+pub fn print(message: &str) {
     for char in message.bytes() {
         print_char(char);
     }
 }
 
 pub fn printnumb(mut number: u32) {
+    if number == 0 {
+        print_char(b'0');
+    }
     let mut stack: [u8; 10] = [0; 10];
     let mut i = 0;
     while number > 0 {

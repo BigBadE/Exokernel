@@ -1,5 +1,6 @@
 use core::arch::asm;
 use core::mem::size_of;
+use common::boot_info::BootInfo;
 
 #[repr(C)]
 pub struct GDT {
@@ -57,29 +58,32 @@ impl GDT {
         "sti");
     }
 
-    pub unsafe fn enter_protected_jump(jumping: u32, args: u32) -> ! {
+    pub unsafe fn enter_protected_jump(jumping: u32, args: &mut BootInfo) -> ! {
         asm!(
         //Disable interrupts
         "cli",
         //Enter protected mode
         "mov eax, cr0", "or al, 1", "mov cr0, eax",
+        // align the stack
+        "and esp, 0xffffff00",
         //Push args
         "push {0:e}",
-        in(reg) args);
+        "push {1:e}",
+        in(reg) args as *const BootInfo as u32,
+        in(reg) jumping);
         //Explainer: https://stackoverflow.com/questions/49438550/assembly-executing-a-long-jump-with-an-offset-with-different-syntax
-        asm!(
         //Jump to protected mode
-        "ljmp $0x08, $1", "1:", options(att_syntax));
+        asm!("ljmp $0x8, $2f", "2:", options(att_syntax));
         asm!(
         //32-bit mode!
         ".code32",
 
         //Setup segment registers
-        "mov ax, 0x10", "mov ds, ax", "mov es, ax", "mov fs, ax", "mov gs, ax", "mov ss, ax",
+        "mov ax, 0x10", "mov ds, ax", "mov es, ax", "mov ss, ax",
         //Call
-        "call {0:e}",
-        in(reg) jumping
-        );
+        "pop {0}",
+        //"call {0}",
+        out(reg) _);
 
         loop {
             asm!("hlt");

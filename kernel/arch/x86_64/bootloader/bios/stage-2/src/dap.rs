@@ -1,7 +1,6 @@
 use core::arch::asm;
-use core::{ptr, slice};
-use crate::{print, println};
-use crate::util::print::{printhex, printnumb};
+use core::ptr;
+use crate::util::print::{print, printhex, println, printnumb};
 
 #[derive(Clone)]
 pub struct DiskRead {
@@ -19,34 +18,50 @@ impl DiskRead {
         };
     }
 
-    pub fn read(&mut self, buffer: &mut [u8]) -> Option<usize> {
-        let mut temp_buffer = [0u8; 512];
-        let value = self.read_len(buffer.len(), &mut temp_buffer);
-        unsafe {
-            ptr::copy_nonoverlapping(temp_buffer.as_ptr_range().start, buffer.as_mut_ptr_range().start, buffer.len());
-        }
-        return value;
+    pub fn read(&mut self, len: usize) -> &[u8] {
+        let current_sector_offset = usize::try_from(self.head % 512).unwrap();
+
+        static mut TMP_BUF: [u8; 512*2] = [0; 512 * 2];
+        let buf = unsafe { &mut TMP_BUF };
+        assert!(current_sector_offset + len <= buf.len());
+
+        self.read_len(buf.len(), buf);
+
+        &buf[current_sector_offset..][..len]
     }
 
-    pub fn read_len(&mut self, mut size: usize, buffer: &mut [u8]) -> Option<usize> {
-        assert_eq!(buffer.len() % 512, 0);
-        let mut buffer = buffer.as_ptr_range().start as u32;
-        while size > 0 {
-            //Get the offset (from (0, 512)) on the LBA
-            let offset = (self.head & 0x1FF) as u32;
-            //Subtract the offset from the length
-            let len = size.min((0xFFFF - offset) as usize);
-            //Get the LBA from the head and read it
-            DAP::new(((len - 1) / 512 + 1) as u16, buffer, self.head >> 9).load(self.disk);
-            self.head += len as u64;
-            size -= len;
-            buffer += len as u32;
+    pub fn read_len(&mut self, mut size: usize, buffer: &mut [u8]) {
+        assert_eq!(size % 512, 0);
+        let buf = &mut buffer[..size];
+
+        let end_addr = self.base + self.head + buf.len() as u64;
+        let mut start_lba = (self.base + self.head) / 512;
+        let end_lba = (end_addr - 1) / 512;
+
+        let mut number_of_sectors = end_lba + 1 - start_lba;
+        let mut target_addr = buf.as_ptr_range().start as u32;
+
+        loop {
+            let sectors = u64::min(number_of_sectors, 32) as u16;
+            let dap = DAP::new(sectors, target_addr, start_lba);
+            unsafe {
+                dap.load(self.disk);
+            }
+
+            start_lba += sectors as u64;
+            number_of_sectors -= sectors as u64;
+            target_addr += sectors as u32 * 512;
+
+            if number_of_sectors == 0 {
+                break;
+            }
         }
-        return Some(size);
+
+        self.head = end_addr;
     }
 
     pub fn seek(&mut self, seeking: u64) {
-        self.head = self.base + seeking;
+        self.head = seeking;
     }
 }
 

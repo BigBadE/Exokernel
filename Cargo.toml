@@ -13,7 +13,8 @@ members = [
     # x86_64 BIOS Bootloader
     "kernel/arch/x86_64/bootloader/bios/stage-1",
     "kernel/arch/x86_64/bootloader/bios/stage-2",
-    "kernel/arch/x86_64/bootloader/bios/stage-3"
+    "kernel/arch/x86_64/bootloader/bios/stage-3",
+    "kernel/common"
 ]
 
 [build-dependencies]

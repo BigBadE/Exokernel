@@ -7,3 +7,4 @@ build = "build.rs"
 
 [dependencies]
 # fs = { path = "../../../../../../lib/fs", default-features = false, features = ["kernel"] }
+common = { path = "../../../../../common" }
