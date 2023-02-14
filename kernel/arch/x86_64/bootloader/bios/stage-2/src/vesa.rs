@@ -1,55 +1,56 @@
 use core::arch::asm;
 use core::ptr;
+use core::ptr::slice_from_raw_parts;
+use core::slice::from_raw_parts;
 use common::boot_info::VideoInfo;
 use crate::FILE_BUFFER_SIZE;
-use crate::util::print::{print, printhex, println, printnumb};
+use crate::util::print::{print, printhex, printhexbuf, println, printnumb};
 
-#[repr(C)]
-#[derive(Clone)]
+#[repr(C, packed)]
 pub struct VBEInfo {
     pub vbe_signature: [u8; 4],
     pub vbe_version: u16,
     pub oem_string_ptr: u32,
     pub capabilities: u32,
-    pub video_mode_segment: u16,
-    pub video_mode_offset: u16,
+    pub video_mode_ptr: u32,
     pub total_memory: u16,
+    oem: [u8; 512 - 0x14]
 }
 
 #[repr(C, align(256))]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct VBEModeInfo {
-    attributes: u16,
     // deprecated, only bit 7 should be of interest to you, and it indicates the mode supports a linear frame buffer.
+    attributes: u16,
+    // deprecated
     window_a: u8,
     // deprecated
     window_b: u8,
-    // deprecated
-    granularity: u16,
     // deprecated; used while calculating bank numbers
+    granularity: u16,
     window_size: u16,
     segment_a: u16,
     segment_b: u16,
-    win_func_ptr: u32,
     // deprecated; used to switch banks from protected mode without returning to real mode
-    pitch: u16,
+    win_func_ptr: u32,
     // number of bytes per horizontal line
-    width: u16,
+    pitch: u16,
     // width in pixels
-    height: u16,
+    width: u16,
     // height in pixels
-    w_char: u8,
+    height: u16,
     // unused...
-    y_char: u8,
+    w_char: u8,
     // ...
+    y_char: u8,
     planes: u8,
-    bpp: u8,
     // bits per pixel in this mode
-    banks: u8,
+    bpp: u8,
     // deprecated; total number of banks in this mode
+    banks: u8,
     memory_model: u8,
-    bank_size: u8,
     // deprecated; size of a bank, almost always 64 KB but may be 16 KB...
+    bank_size: u8,
     image_pages: u8,
     reserved0: u8,
     red_mask: u8,
@@ -61,75 +62,113 @@ pub struct VBEModeInfo {
     reserved_mask: u8,
     reserved_position: u8,
     direct_color_attributes: u8,
-    framebuffer: u32,
     // physical address of the linear frame buffer; write here to draw to the screen
+    framebuffer: u32,
     off_screen_mem_off: u32,
-    off_screen_mem_size: u16,
     // size of memory in the framebuffer but not being displayed on the screen
+    off_screen_mem_size: u16,
     reserved1: [u8; 206],
 }
 
 impl VBEInfo {
-    pub fn get_best_mode(&self, buffer: &mut [u8; FILE_BUFFER_SIZE]) -> Option<VideoInfo> {
+    pub fn get_best_mode(&self) -> Option<VideoInfo> {
+        let mut buffer = [0u8; 256];
         let mut best = None;
         let mut i = 0;
-        while let Some(mode) = self.get_mode_numb(i) {
+        while let Some(id) = self.get_mode_numb(i) {
             i += 1;
 
-            let mode = match self.get_mode(buffer, mode) {
+            let mode = match self.get_mode(&mut buffer, id) {
                 Ok(result) => result,
-                Err(error) => {
-                    print("Error getting VBE mode: ");
-                    printhex(error as u32);
-                    println("");
-                    continue;
+                Err(_error) => {
+                    println("Error!");
+                    break
                 }
             };
 
-            best = Some(mode);
+            if mode.attributes & 0x90 != 0x90 {
+                continue
+            }
+
+            best = Some((mode, id));
         }
 
-        return best;
+        return match best {
+            Some((best, id)) => Some(VideoInfo {
+                mode: id,
+                width: best.width,
+                height: best.height,
+                framebuffer: best.framebuffer,
+                bytes_per_pixel: (best.bpp / 8) as u16,
+                bytes_per_line: best.pitch
+            }),
+            None => None
+        };
     }
 
-    fn get_mode_numb(&self, index: u32) -> Option<u16> {
-        let ptr = self.video_mode_segment as u32 >> 4 + self.video_mode_offset;
-        let mode = unsafe { *((ptr + index) as *const u16) };
+    fn get_mode_numb(&self, index: usize) -> Option<u16> {
+        let (segment, offset) = {
+            let raw = self.video_mode_ptr;
+            ((raw >> 16) as u16, raw as u16)
+        };
+        let video_mode_ptr = ((segment as u32) << 4) + offset as u32;
+        let mode = unsafe { *((video_mode_ptr as *const u16).add(index)) };
         return match mode {
             0xFFFF => None,
             _ => Some(mode)
         };
     }
 
-    fn get_mode(&self, buffer: &mut [u8; FILE_BUFFER_SIZE], mode: u16) -> Result<VideoInfo, u16> {
-        let mut buffer = &mut buffer[0..256];
-        buffer.fill(0);
+    fn get_mode(&self, buffer: &mut [u8; 256], mode: u16) -> Result<VBEModeInfo, u16> {
+        assert_eq!(core::mem::size_of::<VBEModeInfo>(), 256);
 
-        let address = buffer.as_ptr() as u32;
-        let offset = address - address >> 4;
+        let slice = &mut buffer[..core::mem::size_of::<VBEModeInfo>()];
+        slice.fill(0);
+        let block_ptr = slice.as_mut_ptr();
 
-        let code: u16;
+        let mut ret: u16;
+        let mut target_addr = block_ptr as u32;
+        let segment = target_addr >> 4;
+        target_addr -= segment << 4;
         unsafe {
-            asm!("push es", "mov es, {0}", "int 0x10", "pop es",
-            in(reg) (address >> 4) as u16, inout("ax") 0x4F01u16 => code, in("cx") mode, in("di") offset);
-        }
-
-        return match code {
-            0x4F => Ok(VideoInfo {}),
-            _ => Err(code)
+            asm!(
+            "push es", "mov es, {:x}", "int 0x10", "pop es",
+            in(reg) segment as u16,
+            inout("ax") 0x4f01u16 => ret,
+            in("cx") mode,
+            in("di") target_addr as u16
+            )
+        };
+        return match ret {
+            0x4F => Ok(unsafe { *(buffer.as_ptr() as *const VBEModeInfo) }),
+            _ => Err(ret)
         };
     }
 }
 
-pub fn get_vbe_info(buffer: &mut [u8; FILE_BUFFER_SIZE]) -> VBEInfo {
-    let buffer = buffer as *const [u8; FILE_BUFFER_SIZE] as u32;
-    let output: u32;
-    unsafe {
-        asm!("push es", "int 0x10", "pop es", inout("ax") 0x4F00u32 => output, in("di") buffer);
-        if output != 0x4f {
-            panic!("Failed to fetch VBE");
+    pub fn enable(info: &VideoInfo) -> Result<(), u16> {
+        let code: u16;
+        unsafe {
+            asm!("push bx", "mov bx, {:x}", "int 0x10", "pop bx", in(reg) info.mode, inout("ax") 0x4F02u16 => code);
         }
 
-        return ptr::read(buffer as *const VBEInfo).clone();
+        return match code {
+            0x4F => Ok(()),
+            _ => Err(code)
+        }
     }
+
+pub fn get_vbe_info(buffer: &mut [u8; FILE_BUFFER_SIZE]) -> &VBEInfo {
+    assert_eq!(core::mem::size_of::<VBEInfo>(), 512);
+    buffer.fill(0);
+
+    let block_ptr = buffer.as_mut_ptr();
+    let ret: u16;
+    unsafe {
+        asm!("push es", "mov es, {:x}", "int 0x10", "pop es", in(reg)0, inout("ax") 0x4f00u16 => ret, in("di") block_ptr)
+    };
+    return match ret {
+        0x4f => unsafe { &*block_ptr.cast() },
+        _ => panic!("Couldn't load VBE")
+    };
 }

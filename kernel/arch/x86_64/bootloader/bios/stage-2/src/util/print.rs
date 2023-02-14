@@ -31,6 +31,9 @@ pub fn printnumb(mut number: u32) {
 pub fn printhex(mut number: u32) {
     let mut stack: [u8; 10] = [0; 10];
     let mut i = 0;
+    if number == 0 {
+        print_char(b'0');
+    }
     while number > 0 {
         stack[i] = to_hex((number % 16) as u8);
         i += 1;

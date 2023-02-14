@@ -8,8 +8,8 @@ use crate::dap::DiskRead;
 use crate::gdt::GDT;
 use crate::util::fat::FileSystem;
 use crate::util::print;
-use crate::util::print::{print, println, printnumb};
-use crate::vesa::get_vbe_info;
+use crate::util::print::{print, printhex, println, printnumb};
+use crate::vesa::{enable, get_vbe_info};
 
 mod partitions;
 mod gdt;
@@ -50,15 +50,18 @@ pub extern "C" fn second_stage(disk_number: u16) -> !{
 }
 
 fn get_boot_info(buffer: &mut [u8; FILE_BUFFER_SIZE]) -> BootInfo {
-    let video = match get_vbe_info(buffer).get_best_mode(buffer) {
+    let video = match get_vbe_info(buffer).get_best_mode() {
         Some(value) => value,
         None => panic!("Failed to find a video mode.")
     };
 
-    return BootInfo {
-        video: VideoInfo {
+    match enable(&video) {
+        Ok(_) => {},
+        Err(_) => panic!("Failed to enable video mode.")
+    }
 
-        }
+    return BootInfo {
+        video
     }
 }
 
