@@ -14,6 +14,7 @@ const FOURTH_START: u32 = 0x20_000;
 pub extern "C" fn third_stage(args: u32) {
     let boot_info = unsafe { ptr::read(args as *const BootInfo) };
 
+    boot_info.video.write((0, 0), (255, 255, 255));
     loop {
         panic!("Fail!");
     }

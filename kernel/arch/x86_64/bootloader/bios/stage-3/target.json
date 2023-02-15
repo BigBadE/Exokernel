@@ -1,6 +1,6 @@
 {
   "arch": "x86",
-  "llvm-target": "i686-unknown-none-code16",
+  "llvm-target": "i686-unknown-none",
   "linker-flavor": "ld.lld",
   "linker": "rust-lld",
   "target-pointer-width": "32",

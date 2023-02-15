@@ -3,18 +3,20 @@
 #![feature(panic_info_message)]
 
 use core::ptr;
-use common::boot_info::{BootInfo, VideoInfo};
+use common::boot_info::{BootInfo, MemoryInfo, VideoInfo};
 use crate::dap::DiskRead;
 use crate::gdt::GDT;
+use crate::memory::detect_memory;
 use crate::util::fat::FileSystem;
 use crate::util::print;
 use crate::util::print::{print, printhex, println, printnumb};
 use crate::vesa::{enable, get_vbe_info};
 
-mod partitions;
-mod gdt;
-mod dap;
 mod util;
+mod dap;
+mod gdt;
+mod memory;
+mod partitions;
 mod vesa;
 
 const PARTITION_TABLE: *const u8 = 0x7DBE as *const u8;
@@ -39,9 +41,15 @@ pub extern "C" fn second_stage(disk_number: u16) -> !{
 
         //Load third stage and check that it's not longer than its given length
         assert!(load_file(&mut buf, &mut fs, "sys", THIRD_START).unwrap() + THIRD_START < FOURTH_START);
+
         let mut boot_info = get_boot_info(&mut buf);
+
+        for i in 0..1 {
+
+        }
+
         //Enter 32 bit mode and jump
-        //GDT::enter_protected_jump(THIRD_START, &mut boot_info);
+        GDT::enter_protected_jump(THIRD_START, &mut boot_info);
     }
 
     loop {
@@ -50,6 +58,13 @@ pub extern "C" fn second_stage(disk_number: u16) -> !{
 }
 
 fn get_boot_info(buffer: &mut [u8; FILE_BUFFER_SIZE]) -> BootInfo {
+    println("Loading memory!");
+    let memory = match detect_memory() {
+        Ok(memory) => memory,
+        Err(code) => panic!("Failed to map memory.")
+    };
+
+    println("Loaded memory!");
     let video = match get_vbe_info(buffer).get_best_mode() {
         Some(value) => value,
         None => panic!("Failed to find a video mode.")
@@ -61,7 +76,8 @@ fn get_boot_info(buffer: &mut [u8; FILE_BUFFER_SIZE]) -> BootInfo {
     }
 
     return BootInfo {
-        video
+        video,
+        memory
     }
 }
 
