@@ -2,6 +2,7 @@
 #![no_main]
 #![feature(panic_info_message)]
 
+use core::arch::asm;
 use core::ptr;
 use common::boot_info::BootInfo;
 
@@ -15,8 +16,10 @@ pub extern "C" fn third_stage(args: u32) {
     let boot_info = unsafe { ptr::read(args as *const BootInfo) };
 
     boot_info.video.write((0, 0), (255, 255, 255));
-    loop {
-        panic!("Fail!");
+    unsafe {
+        loop {
+            asm!("hlt");
+        }
     }
 }
 

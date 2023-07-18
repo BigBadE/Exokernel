@@ -1,13 +1,9 @@
 use std::{env, fs, io};
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use fatfs::{FormatVolumeOptions, FsOptions};
 use mbrman::{CHS, MBR, MBRPartitionEntry};
-
-const MB: u64 = 1024 * 1024;
 
 fn main() {
     let path = env::var("OUT_DIR").unwrap();
@@ -21,12 +17,12 @@ fn main() {
         convert_elf_to_bin(build("x86_64-bootloader-bios-stage-2", "kernel/arch/x86_64/bootloader/bios/stage-2",
                                  "target.json", "release", path));
 
-    let mut map = HashMap::new();
-    map.insert("sys", convert_elf_to_bin(build("x86_64-bootloader-bios-stage-3", "kernel/arch/x86_64/bootloader/bios/stage-3",
-                                                     "target.json", "release", path)));
+    let third_stage =
+        convert_elf_to_bin(build("x86_64-bootloader-bios-stage-3", "kernel/arch/x86_64/bootloader/bios/stage-3",
+                                                     "target.json", "release", path));
 
     //Build BIOS image
-    BIOSImage::new(path, first_stage, second_stage, map).unwrap().write(bios_path.clone()).unwrap();
+    BIOSImage::new(first_stage, second_stage, third_stage).unwrap().write(bios_path.clone()).unwrap();
     println!(
         "cargo:rustc-env=BIOS_PATH={}",
         bios_path.display()
@@ -36,11 +32,11 @@ fn main() {
 struct BIOSImage {
     mbr: MBR,
     kernel_loader: File,
-    disk: File,
+    third_stage: File,
 }
 
 impl BIOSImage {
-    pub fn new(out_dir: &Path, boot_loader: PathBuf, kernel_loader: PathBuf, include: HashMap<&str, PathBuf>) -> anyhow::Result<Self> {
+    pub fn new(boot_loader: PathBuf, kernel_loader: PathBuf, third_stage: PathBuf) -> anyhow::Result<Self> {
         let mut boot_loader = File::open(boot_loader)?;
         let mut mbr = MBR::read_from(&mut boot_loader, 512)?;
         let kernel_loader = File::open(kernel_loader)?;
@@ -53,40 +49,12 @@ impl BIOSImage {
             last_chs: CHS::empty(),
         };
 
-        let disk = out_dir.join("bios.tmp");
-        let disk = fs::OpenOptions::new().read(true).write(true).create(true).truncate(true).open(disk.clone()).unwrap();
-        let mut len = 0;
-        for (_, path) in &include {
-            len += fs::metadata(path)?.len();
-        }
-
-        let len = ((len + 1024 * 64 - 1) / MB + 1) * MB;
-        disk.set_len(len).unwrap();
-
-        fatfs::format_volume(&disk, FormatVolumeOptions::new().volume_label(*b"ExokernelFS"))?;
-        let fs = fatfs::FileSystem::new(&disk, FsOptions::new())?;
-
-        let root = fs.root_dir();
-        for (path, adding_path) in &include {
-            let path = Path::new(path);
-            let ancestors: Vec<&Path> = path.ancestors().skip(1).collect();
-            for ancestor in ancestors.into_iter().rev().skip(1) {
-                let ancestor = ancestor.display().to_string();
-                if !ancestor.is_empty() {
-                    root.create_dir(ancestor.as_str())?;
-                }
-            }
-            let mut target = root.create_file(path.to_str().unwrap())?;
-            target.truncate()?;
-            io::copy(&mut File::open(adding_path)?, &mut target)?;
-        }
-        drop(root);
-        drop(fs);
-
+        let third_stage = File::open(third_stage)?;
+        let length = (third_stage.metadata()?.len() - 1) as u32;
         mbr[2] = MBRPartitionEntry {
             boot: 0x80,
             starting_lba: 1 + mbr[1].sectors,
-            sectors: (&disk.metadata()?.len() - 1) as u32 / 512 + 1,
+            sectors: length / 512 + 1,
             sys: 0xA0,
             first_chs: CHS::empty(),
             last_chs: CHS::empty(),
@@ -95,7 +63,7 @@ impl BIOSImage {
         return Ok(BIOSImage {
             mbr,
             kernel_loader,
-            disk,
+            third_stage
         });
     }
 
@@ -106,9 +74,9 @@ impl BIOSImage {
 
         assert_eq!(output_file.stream_position()?, 512);
         io::copy(&mut self.kernel_loader, &mut output_file).unwrap();
-        output_file.seek(SeekFrom::Start(((self.kernel_loader.metadata()?.len() - 1) / 512 + 2) * 512))?;
-        self.disk.seek(SeekFrom::Start(0))?;
-        io::copy(&mut self.disk, &mut output_file).unwrap();
+        let end = 512 - output_file.stream_position()? % 512;
+        output_file.seek(SeekFrom::Current(end as i64))?;
+        io::copy(&mut self.third_stage, &mut output_file).unwrap();
         return Ok(());
     }
 }
@@ -136,6 +104,7 @@ fn build(name: &str, path: &str, target: &str, profile: &str, out_dir: &Path) ->
             path.exists(),
             "{} executable does not exist after building", name
         );
+        assert_ne!(path.metadata().unwrap().len(), 0, "{} executable has no length after building", name);
         path
     } else {
         panic!("failed to build {}", name);
@@ -166,6 +135,7 @@ fn convert_elf_to_bin(elf_path: PathBuf) -> PathBuf {
             String::from_utf8_lossy(&output.stderr)
         );
     }
+    assert_ne!(flat_binary_path.metadata().unwrap().len(), 0, "{} is empty", flat_binary_path.display());
     flat_binary_path
 }
 

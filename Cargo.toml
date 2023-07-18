@@ -22,7 +22,6 @@ llvm-tools = "0.1.1"
 
 #File creation utils
 mbrman = "0.5.1"
-fatfs = "0.3.5"
 # fs = { path = "lib/fs" }
 
 anyhow = "1.0.67"

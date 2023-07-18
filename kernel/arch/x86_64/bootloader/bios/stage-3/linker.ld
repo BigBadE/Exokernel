@@ -1,4 +1,4 @@
-ENTRY(_start)
+ENTRY(third_stage)
 
 SECTIONS {
     /* Start of third stage */
@@ -6,7 +6,7 @@ SECTIONS {
 
     .third_stage :
     {
-        *(.sthird_stage)
+        *(.third_stage)
     }
     .text :
     {
@@ -30,5 +30,5 @@ SECTIONS {
 
     . = ALIGN(512);
 
-    second_end = .;
+    _third_end = .;
 }
