@@ -1,6 +1,4 @@
 use core::arch::asm;
-use core::ptr;
-use crate::util::print::{print, printhex, println, printnumb};
 
 #[derive(Clone)]
 pub struct DiskRead {
@@ -11,11 +9,11 @@ pub struct DiskRead {
 
 impl DiskRead {
     pub fn new(base: u64, disk: u16) -> Self {
-        return DiskRead {
+        DiskRead {
             base,
             head: base,
             disk,
-        };
+        }
     }
 
     pub fn read(&mut self, len: usize) -> &[u8] {

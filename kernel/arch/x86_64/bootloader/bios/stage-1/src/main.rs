@@ -1,46 +1,49 @@
 #![no_std]
 #![no_main]
 
-use core::arch::{asm, global_asm};
-use core::ptr;
 use crate::dap::DAP;
+use core::arch::{asm, global_asm};
+use core::{mem, ptr, slice};
 
 global_asm!(include_str!("bootloader.s"));
 
 mod dap;
 
 extern "C" {
-    pub static second_stage: u16;
+    pub static _partition_table: u8;
+    pub static _second_stage: u8;
 }
-
-//See bootloader/bios/README.md for why these values are here.
-const SECOND_STAGE_START: u32 = 0x7E00;
-const PARTITION_TABLE: *const u8 = 0x7DBE as *const u8;
 
 #[no_mangle]
 pub extern "C" fn first_stage(disk_number: u16) {
     unsafe {
-        let partitions = ptr::read(PARTITION_TABLE as *const [PartitionTableEntry; 4]);
-        let dap = DAP::new(partitions[1].sectors as u16, SECOND_STAGE_START, 1);
+        let partitions = ptr::read(&_partition_table as *const u8 as *const [PartitionTableEntry; 4]);
+        let dap = DAP::new(
+            partitions[0].sectors as u16,
+            &_second_stage as *const u8 as u32,
+            partitions[0].lba as u64,
+        );
         enable_a20();
 
         dap.load(disk_number);
 
-        let call_second_stage: fn(disk_number: u16) = core::mem::transmute(SECOND_STAGE_START);
+        let call_second_stage: fn(disk_number: u16) =
+            mem::transmute(&_partition_table as *const u8 as u32);
         call_second_stage(disk_number);
+
+        fail(b'R');
     }
 }
 
 #[no_mangle]
-pub extern "C" fn fail() -> ! {
+pub extern "C" fn fail(code: u8) -> ! {
     print(b'!');
-    loop{}
+    print(code);
+    loop {}
 }
 
 pub unsafe fn enable_a20() {
-    asm!("in al, 0x92",
-    "or al, 2",
-    "out 0x92, al");
+    asm!("in al, 0x92", "or al, 2", "out 0x92, al");
 }
 
 pub fn print(char: u8) {
@@ -56,10 +59,11 @@ pub fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-#[repr(C, packed(2))]
+#[derive(Copy, Clone)]
+#[repr(C)]
 pub struct PartitionTableEntry {
-    pub bootable: u8,
-    pub partition_type: u8,
+    pub bootable: u32,
+    pub partition_type: u32,
     pub lba: u32,
     pub sectors: u32,
 }

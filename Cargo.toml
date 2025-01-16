@@ -7,13 +7,13 @@ build = "build.rs"
 
 [workspace]
 members = [
-    # File system
-    "lib/fs",
+    # Libraries
+    "lib/*",
 
-    # x86_64 BIOS Bootloader
-    "kernel/arch/x86_64/bootloader/bios/stage-1",
-    "kernel/arch/x86_64/bootloader/bios/stage-2",
-    "kernel/arch/x86_64/bootloader/bios/stage-3",
+    # x86_64 bios bootloader
+    "kernel/arch/x86_64/bootloader/bios/*",
+
+    # Common package
     "kernel/common"
 ]
 
@@ -21,10 +21,10 @@ members = [
 llvm-tools = "0.1.1"
 
 #File creation utils
-mbrman = "0.5.1"
+mbrman = { git = "https://github.com/BigBadE/mbrman/" }
 # fs = { path = "lib/fs" }
 
-anyhow = "1.0.67"
+anyhow = "1.0.88"
 
 [profile.stage-1]
 inherits = "release"

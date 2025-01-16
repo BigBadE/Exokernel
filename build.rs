@@ -1,6 +1,6 @@
 use std::{env, fs, io};
 use std::fs::File;
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use mbrman::{CHS, MBR, MBRPartitionEntry};
@@ -8,7 +8,7 @@ use mbrman::{CHS, MBR, MBRPartitionEntry};
 fn main() {
     let path = env::var("OUT_DIR").unwrap();
     let path = Path::new(path.as_str());
-    let bios_path = path.clone().join("bios").join("bios.img");
+    let bios_path = path.join("bios").join("bios.img");
 
     let first_stage =
         convert_elf_to_bin(build("x86_64-bootloader-bios-stage-1", "kernel/arch/x86_64/bootloader/bios/stage-1",
@@ -60,24 +60,31 @@ impl BIOSImage {
             last_chs: CHS::empty(),
         };
 
-        return Ok(BIOSImage {
+        Ok(BIOSImage {
             mbr,
             kernel_loader,
             third_stage
-        });
+        })
     }
 
     pub fn write(&mut self, output: PathBuf) -> anyhow::Result<()> {
         fs::create_dir_all(output.parent().unwrap())?;
         let mut output_file = File::create(output.clone())?;
+
+        // Write MBR
         self.mbr.write_into(&mut output_file)?;
 
+        // Write the loader
         assert_eq!(output_file.stream_position()?, 512);
-        io::copy(&mut self.kernel_loader, &mut output_file).unwrap();
+        io::copy(&mut self.kernel_loader, &mut output_file)?;
+
+        // Seek to the end of the block
         let end = 512 - output_file.stream_position()? % 512;
         output_file.seek(SeekFrom::Current(end as i64))?;
-        io::copy(&mut self.third_stage, &mut output_file).unwrap();
-        return Ok(());
+
+        // Write the third stage
+        io::copy(&mut self.third_stage, &mut output_file)?;
+        Ok(())
     }
 }
 
@@ -87,8 +94,8 @@ fn build(name: &str, path: &str, target: &str, profile: &str, out_dir: &Path) ->
 
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".into());
     let mut cmd = Command::new(cargo);
-    cmd.arg("install").arg(name.clone());
-    cmd.arg("--path").arg(path.clone());
+    cmd.arg("install").arg(name);
+    cmd.arg("--path").arg(path);
     cmd.arg("--locked");
     cmd.arg("--target").arg(format!("{}/{}", path, target));
     cmd.arg("--root").arg(out_dir);
@@ -137,33 +144,4 @@ fn convert_elf_to_bin(elf_path: PathBuf) -> PathBuf {
     }
     assert_ne!(flat_binary_path.metadata().unwrap().len(), 0, "{} is empty", flat_binary_path.display());
     flat_binary_path
-}
-
-struct TestWriter {
-    array: [u8; 512],
-    head: u64
-}
-
-impl Write for TestWriter {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        for i in 0..buf.len() {
-            self.array[i+(self.head as usize)] = buf[i];
-        }
-        return Ok(buf.len());
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        self.array = [0; 512];
-        return Ok(());
-    }
-}
-
-impl Seek for TestWriter {
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        match pos {
-            SeekFrom::Start(head) => self.head = head,
-            _ => panic!("Lazy!")
-        }
-        return Ok(self.head);
-    }
 }

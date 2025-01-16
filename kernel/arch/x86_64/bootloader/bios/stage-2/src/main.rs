@@ -2,20 +2,18 @@
 #![no_main]
 #![feature(panic_info_message)]
 
-use core::ptr;
-use common::boot_info::{BootInfo, MemoryInfo, VideoInfo};
-use crate::dap::{DAP, DiskRead};
+use crate::dap::DAP;
 use crate::gdt::GDT;
 use crate::memory::detect_memory;
-use crate::util::print;
-use crate::util::print::{print, printhex, println, printnumb};
-use crate::vesa::{enable, get_vbe_info};
+use crate::util::print::println;
+use crate::vesa::get_vbe_info;
+use common::boot_info::BootInfo;
+use core::ptr;
 
 mod util;
 mod dap;
 mod gdt;
 mod memory;
-mod partitions;
 mod vesa;
 
 const PARTITION_TABLE: *const u8 = 0x7DBE as *const u8;
@@ -44,17 +42,13 @@ pub extern "C" fn second_stage(disk_number: u16) -> !{
         //Enter 32 bit mode and jump
         GDT::enter_protected_jump(THIRD_START, &mut boot_info);
     }
-
-    loop {
-
-    }
 }
 
 fn get_boot_info(buffer: &mut [u8; FILE_BUFFER_SIZE]) -> BootInfo {
     println("Loading memory!");
     let memory = match detect_memory() {
         Ok(memory) => memory,
-        Err(code) => panic!("Failed to map memory.")
+        Err(_code) => panic!("Failed to map memory.")
     };
 
     println("Loaded memory!");
@@ -68,7 +62,7 @@ fn get_boot_info(buffer: &mut [u8; FILE_BUFFER_SIZE]) -> BootInfo {
         Err(_) => panic!("Failed to enable video mode.")
     }*/
 
-    return BootInfo {
+    BootInfo {
         video,
         memory
     }
@@ -95,7 +89,7 @@ pub extern "C" fn fail() -> ! {
 #[panic_handler]
 pub fn panic(info: &core::panic::PanicInfo) -> ! {
     use core::fmt::Write;
-    let output = info.message().unwrap();
+    let output = info.message();
     println(output.as_str().unwrap());
     loop {}
 }

@@ -2,7 +2,7 @@ use core::arch::asm;
 use core::slice;
 use common::boot_info::{MemoryInfo, MemoryRegion};
 use crate::FILE_BUFFER_SIZE;
-use crate::util::print::{print, printhex, println, printnumb};
+use crate::util::print::{print, print_hex, println, print_numb};
 
 pub static MEMORY: [MemoryRegion; 100] = [MemoryRegion::default(); 100];
 
@@ -31,7 +31,7 @@ pub fn detect_memory() -> Result<MemoryInfo, u32> {
         };
         if ret != SMAP {
             print("Failed: ");
-            printhex(ret);
+            print_hex(ret);
             println("");
             return Err(ret);
         }
@@ -45,7 +45,7 @@ pub fn detect_memory() -> Result<MemoryInfo, u32> {
         }
     }
 
-    return Ok(MemoryInfo {
+    Ok(MemoryInfo {
         memory: &MEMORY[..i-1]
     })
 }

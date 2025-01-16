@@ -6,7 +6,7 @@ pub fn print(message: &str) {
     }
 }
 
-pub fn printnumb(mut number: u32) {
+pub fn print_numb(mut number: u32) {
     if number == 0 {
         print_char(b'0');
     }
@@ -28,7 +28,7 @@ pub fn printnumb(mut number: u32) {
     }
 }
 
-pub fn printhex(mut number: u32) {
+pub fn print_hex(mut number: u32) {
     let mut stack: [u8; 10] = [0; 10];
     let mut i = 0;
     if number == 0 {
@@ -51,14 +51,14 @@ pub fn printhex(mut number: u32) {
 }
 
 fn to_hex(value: u8) -> u8 {
-    return if value > 9 {
+    if value > 9 {
         b'A' + value - 10
     } else {
         b'0' + value
     }
 }
 
-pub fn printhexbuf(buf: &[u8]) {
+pub fn print_hex_buf(buf: &[u8]) {
     let mut out = 0;
     for i in 0..buf.len() {
         print_char(to_hex(buf[i] & 0x0F));
