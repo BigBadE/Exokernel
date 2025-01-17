@@ -3,7 +3,7 @@
 
 use crate::dap::DAP;
 use core::arch::{asm, global_asm};
-use core::{mem, ptr, slice};
+use core::{mem, ptr};
 
 global_asm!(include_str!("bootloader.s"));
 
@@ -24,12 +24,11 @@ pub extern "C" fn first_stage(disk_number: u16) {
             partitions[0].lba as u64,
         );
         enable_a20();
-
         dap.load(disk_number);
 
-        let call_second_stage: fn(disk_number: u16) =
-            mem::transmute(&_partition_table as *const u8 as u32);
-        call_second_stage(disk_number);
+        let call_second_stage: fn(disk_number: u16, partition_table: *const u8) =
+            mem::transmute(&_second_stage as *const u8 as u32);
+        call_second_stage(disk_number, &_partition_table as *const u8);
 
         fail(b'R');
     }

@@ -21,7 +21,7 @@ impl DAP {
             size: 0x10,
             zero: 0,
             sectors: size,
-            offset: (address & 0x1111) as u16,
+            offset: (address & 0b1111) as u16,
             segment: (address >> 4) as u16,
             lba
         }

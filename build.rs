@@ -1,9 +1,11 @@
-use std::{env, fs, io};
-use std::fs::File;
-use std::io::{Seek, SeekFrom};
+use fatfs::{FileSystem, FsOptions};
+use mbrman::{MBRPartitionEntry, CHS, MBR};
+use std::fs::{File, OpenOptions};
+use std::io::{Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use mbrman::{CHS, MBR, MBRPartitionEntry};
+use std::{env, fs, io};
+use std::collections::HashMap;
 
 fn main() {
     let path = env::var("OUT_DIR").unwrap();
@@ -32,7 +34,7 @@ fn main() {
 struct BIOSImage {
     mbr: MBR,
     kernel_loader: File,
-    third_stage: File,
+    fat_file: File
 }
 
 impl BIOSImage {
@@ -49,8 +51,36 @@ impl BIOSImage {
             last_chs: CHS::empty(),
         };
 
-        let third_stage = File::open(third_stage)?;
-        let length = (third_stage.metadata()?.len() - 1) as u32;
+        let files = HashMap::from([
+            (".check", "PASS".bytes().collect()),
+            (".kernel/stage-3.bin", fs::read(&third_stage)?)
+        ]);
+
+        // Setup the FAT32 file system
+        let mut fat_file = OpenOptions::new().read(true).write(true).create(true)
+            .open(third_stage.parent().unwrap().join("fat.img"))?;
+        const MB: u64 = 1024 * 1024;
+        let size = files.values().map(|file| file.len()).sum::<usize>() as u64;
+        let len = ((size + 1024 * 64 - 1) / MB + 1) * MB + MB;
+        fat_file.set_len(len)?;
+
+        // Write the FAT data
+        {
+            let format_options = fatfs::FormatVolumeOptions::new().volume_label(*b"Exokernel  ");
+            fatfs::format_volume(&fat_file, format_options)?;
+            let fat = FileSystem::new(&mut fat_file, FsOptions::new())?;
+
+            for (path, data) in files {
+                let mut current = fat.root_dir();
+                let path = path.split("/").collect::<Vec<_>>();
+                for dir in &path[..path.len()-1] {
+                    current = current.create_dir(*dir)?;
+                }
+                current.create_file(path.last().unwrap())?.write_all(&*data)?;
+            }
+        }
+
+        let length = (len - 1) as u32;
         mbr[2] = MBRPartitionEntry {
             boot: 0x80,
             starting_lba: 1 + mbr[1].sectors,
@@ -63,7 +93,7 @@ impl BIOSImage {
         Ok(BIOSImage {
             mbr,
             kernel_loader,
-            third_stage
+            fat_file
         })
     }
 
@@ -82,8 +112,9 @@ impl BIOSImage {
         let end = 512 - output_file.stream_position()? % 512;
         output_file.seek(SeekFrom::Current(end as i64))?;
 
-        // Write the third stage
-        io::copy(&mut self.third_stage, &mut output_file)?;
+        // Write the FAT file
+        self.fat_file.seek(SeekFrom::Start(0))?;
+        io::copy(&mut self.fat_file, &mut output_file)?;
         Ok(())
     }
 }
