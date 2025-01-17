@@ -1,7 +1,7 @@
 use crate::disk::dap::DAP;
 use crate::disk::{AlignedArrayBuffer, AlignedBuffer, Read, Seek, SeekFrom};
-use crate::util::print::{print, print_hex, print_numb, println};
 
+#[derive(Clone)]
 pub struct DiskReader {
     pub disk_number: u16,
     pub base: u64,
@@ -45,17 +45,9 @@ impl Read for DiskReader {
         assert_eq!(len % 512, 0);
         let buf = &mut buf.slice_mut()[..len];
 
-        println("1");
         let end_addr = self.base + self.offset + u64::try_from(buf.len()).unwrap();
         let mut start_lba = (self.base + self.offset) / 512;
         let end_lba = (end_addr - 1) / 512;
-        print("3: ");
-        print_numb(self.base as u32);
-        print(", ");
-        print_hex(self.offset as u32);
-        loop {
-
-        }
         let mut number_of_sectors = end_lba + 1 - start_lba;
         let mut target_addr = buf.as_ptr_range().start as u32;
 
@@ -66,9 +58,8 @@ impl Read for DiskReader {
                 target_addr,
                 start_lba
             );
-            println("3-1");
+
             dap.load(self.disk_number);
-            println("4");
 
             start_lba += u64::from(sectors);
             number_of_sectors -= u64::from(sectors);
@@ -77,14 +68,9 @@ impl Read for DiskReader {
             if number_of_sectors == 0 {
                 break;
             }
-            println("5");
         }
 
         self.offset = end_addr;
-        println("Here!");
-        loop {
-
-        }
     }
 }
 

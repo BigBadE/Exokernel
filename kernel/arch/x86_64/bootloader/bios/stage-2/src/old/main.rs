@@ -30,8 +30,35 @@ static mut DISK_BUFFER: AlignedArrayBuffer<FILE_BUFFER_SIZE> = AlignedArrayBuffe
 #[no_mangle]
 #[link_section = ".second_stage"]
 pub extern "C" fn second_stage(disk_number: u16, partition_table: *const u8) -> !{
+    // Enter unreal mode before doing anything else.
+    unsafe {
+        GDT::enter_unreal();
+    }
+
+    let partitions = unsafe { ptr::read(partition_table as * const [PartitionTableEntry; 4]) };
+
+    // load fat partition
+    let mut disk = DiskReader {
+        disk_number,
+        base: partitions[1].lba as u64 * 512,
+        offset: 0,
+    };
+
+    let mut fs = FileSystem::parse(disk.clone());
+
+    let disk_buffer = unsafe { &mut DISK_BUFFER };
+
+    if fs.find_file_in_root_dir(".check", disk_buffer).is_none() {
+        println("Failed!");
+    } else {
+        println("Passed!");
+    }
+
     println("Entered stage 2");
 
+    loop {
+
+    }
     unsafe {
         //Enter unreal mode so the kernel is limited to 4 GiB instead of 64 KB
         GDT::enter_unreal();

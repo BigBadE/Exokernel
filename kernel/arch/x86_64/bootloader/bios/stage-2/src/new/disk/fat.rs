@@ -1,7 +1,10 @@
+// Copied from https://github.com/rust-osdev/bootloader/blob/main/bios/stage-2/src/fat.rs
 // based on https://crates.io/crates/mini_fat by https://github.com/gridbugs
 
-use crate::disk_old::{AlignedBuffer, Read, Seek, SeekFrom};
+use crate::disk::{AlignedBuffer, Read, Seek, SeekFrom};
 use core::char::DecodeUtf16Error;
+use core::ptr;
+use crate::disk::dap::DAP;
 
 const DIRECTORY_ENTRY_BYTES: usize = 32;
 const UNUSED_ENTRY_PREFIX: u8 = 0xE5;
@@ -18,7 +21,24 @@ impl File {
     }
 }
 
-struct Bpb {
+pub struct _OldBpb {
+    pub bytes_per_sector: u16,
+    pub sectors_per_cluster: u8,
+    pub reserved_sector_count: u16,
+    pub num_fats: u8,
+    pub root_entry_count: u16,
+    pub total_sectors_16: u16,
+    pub fat_size_16: u16,
+    pub total_sectors_32: u32,
+    pub fat_size_32: u32,
+    pub _root_cluster: u32,
+}
+
+#[derive(Clone)]
+#[repr(C)]
+pub struct Bpb {
+    _ignored: u64,
+    _ignored_2: u16,
     bytes_per_sector: u16,
     sectors_per_cluster: u8,
     reserved_sector_count: u16,
@@ -26,53 +46,31 @@ struct Bpb {
     root_entry_count: u16,
     total_sectors_16: u16,
     fat_size_16: u16,
+    _ignored_3: u64,
     total_sectors_32: u32,
-    fat_size_32: u32,
-    _root_cluster: u32,
+    pub(crate) fat_size_32: u32,
+    root_cluster: u32
 }
 
 impl Bpb {
     fn parse<D: Read + Seek>(disk: &mut D) -> Self {
         disk.seek(SeekFrom::Start(0));
-        let raw = unsafe { disk.read_exact(512) };
 
-        let bytes_per_sector = u16::from_le_bytes(raw[11..13].try_into().unwrap());
-        let sectors_per_cluster = raw[13];
-        let reserved_sector_count = u16::from_le_bytes(raw[14..16].try_into().unwrap());
-        let num_fats = raw[16];
-        let root_entry_count = u16::from_le_bytes(raw[17..19].try_into().unwrap());
-        let fat_size_16 = u16::from_le_bytes(raw[22..24].try_into().unwrap());
+        //let temp = unsafe { disk.read_exact(512) };
 
-        let total_sectors_16 = u16::from_le_bytes(raw[19..21].try_into().unwrap());
-        let total_sectors_32 = u32::from_le_bytes(raw[32..36].try_into().unwrap());
+        let mut raw: Bpb = unsafe { ptr::read(disk.read_exact(512).as_ptr() as *const Bpb) }.clone();
 
-        let root_cluster;
-        let fat_size_32;
-
-        if (total_sectors_16 == 0) && (total_sectors_32 != 0) {
+        if (raw.total_sectors_16 == 0) && (raw.total_sectors_32 != 0) {
             // FAT32
-            fat_size_32 = u32::from_le_bytes(raw[36..40].try_into().unwrap());
-            root_cluster = u32::from_le_bytes(raw[44..48].try_into().unwrap());
-        } else if (total_sectors_16 != 0) && (total_sectors_32 == 0) {
+        } else if (raw.total_sectors_16 != 0) && (raw.total_sectors_32 == 0) {
             // FAT12 or FAT16
-            fat_size_32 = 0;
-            root_cluster = 0;
+            raw.fat_size_32 = 0;
+            raw.root_cluster = 0;
         } else {
             panic!("ExactlyOneTotalSectorsFieldMustBeZero");
         }
 
-        Self {
-            bytes_per_sector,
-            sectors_per_cluster,
-            reserved_sector_count,
-            num_fats,
-            root_entry_count,
-            total_sectors_16,
-            fat_size_16,
-            total_sectors_32,
-            fat_size_32,
-            _root_cluster: root_cluster,
-        }
+        raw
     }
 
     fn fat_size_in_sectors(&self) -> u32 {
@@ -95,8 +93,8 @@ impl Bpb {
         };
         let data_sectors = total_sectors
             - (self.reserved_sector_count as u32
-                + (self.num_fats as u32 * self.fat_size_in_sectors())
-                + root_dir_sectors);
+            + (self.num_fats as u32 * self.fat_size_in_sectors())
+            + root_dir_sectors);
         data_sectors / self.sectors_per_cluster as u32
     }
 
@@ -134,8 +132,8 @@ impl Bpb {
     fn data_offset(&self) -> u64 {
         self.root_directory_size() as u64
             + ((self.reserved_sector_count as u64
-                + self.fat_size_in_sectors() as u64 * self.num_fats as u64)
-                * self.bytes_per_sector as u64)
+            + self.fat_size_in_sectors() as u64 * self.num_fats as u64)
+            * self.bytes_per_sector as u64)
     }
 
     pub fn bytes_per_cluster(&self) -> u32 {
@@ -144,8 +142,8 @@ impl Bpb {
 }
 
 pub struct FileSystem<D> {
-    disk: D,
-    bpb: Bpb,
+    pub disk: D,
+    pub bpb: Bpb,
 }
 
 impl<D: Read + Seek> FileSystem<D> {
@@ -206,7 +204,7 @@ impl<D: Read + Seek> FileSystem<D> {
     fn read_root_dir<'a>(
         &'a mut self,
         buffer: &'a mut (dyn AlignedBuffer + 'a),
-    ) -> impl Iterator<Item = Result<RawDirectoryEntry, ()>> + 'a {
+    ) -> impl Iterator<Item=Result<RawDirectoryEntry<'a>, ()>> + 'a {
         match self.bpb.fat_type() {
             FatType::Fat32 => {
                 // self.bpb.root_cluster;
@@ -232,7 +230,7 @@ impl<D: Read + Seek> FileSystem<D> {
     pub fn file_clusters<'a>(
         &'a mut self,
         file: &File,
-    ) -> impl Iterator<Item = Result<Cluster, ()>> + 'a {
+    ) -> impl Iterator<Item=Result<Cluster, ()>> + 'a {
         Traverser {
             current_entry: file.first_cluster,
             bpb: &self.bpb,
@@ -264,7 +262,7 @@ where
             self.current_entry,
             self.bpb.maximum_valid_cluster(),
         )
-        .map_err(|_| ())?;
+            .map_err(|_| ())?;
         let entry = match entry {
             FileFatEntry::AllocatedCluster(cluster) => cluster,
             FileFatEntry::EndOfFile => return Ok(None),
@@ -352,7 +350,7 @@ struct RawDirectoryEntryLongName<'a> {
 }
 
 impl<'a> RawDirectoryEntryLongName<'a> {
-    pub fn name(&self) -> impl Iterator<Item = Result<char, DecodeUtf16Error>> + 'a {
+    pub fn name(&self) -> impl Iterator<Item=Result<char, DecodeUtf16Error>> + 'a {
         let iter = self
             .name_1
             .chunks(2)

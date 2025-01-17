@@ -7,14 +7,15 @@ use crate::{
     },
 };
 use core::{fmt::Write as _, ptr, slice};
-use crate::disk_old::{AlignedArrayBuffer, Read, Seek, SeekFrom};
+use crate::disk::{AlignedArrayBuffer, Read, Seek, SeekFrom};
+use crate::disk::disk::DiskReader;
+use crate::disk::fat::FileSystem;
 use crate::gdt::GDT;
 use crate::print::println;
 
 mod gdt;
 mod dap;
-mod disk_old;
-mod fat;
+mod disk;
 mod protected_mode;
 mod print;
 
@@ -47,13 +48,13 @@ fn start(disk_number: u16, partition_table_start: *const u8) -> ! {
     let partitions = unsafe { ptr::read(partition_table_start as * const [PartitionTableEntry; 4]) };
 
     // load fat partition
-    let mut disk = disk_old::DiskAccess {
+    let mut disk = DiskReader {
         disk_number,
-        base_offset: u64::from(partitions[1].lba) * 512,
-        current_offset: 0,
+        base: partitions[1].lba as u64 * 512,
+        offset: 0,
     };
 
-    let mut fs = fat::FileSystem::parse(disk.clone());
+    let mut fs = FileSystem::parse(disk.clone());
 
     let disk_buffer = unsafe { &mut DISK_BUFFER };
 
@@ -87,8 +88,8 @@ pub struct PartitionTableEntry {
 fn try_load_file(
     file_name: &str,
     dst: *mut u8,
-    fs: &mut fat::FileSystem<crate::disk_old::DiskAccess>,
-    disk: &mut crate::disk_old::DiskAccess,
+    fs: &mut FileSystem<DiskReader>,
+    disk: &mut DiskReader,
     disk_buffer: &mut AlignedArrayBuffer<16384>,
 ) -> Option<u64> {
     let disk_buffer_size = disk_buffer.buffer.len();
@@ -133,8 +134,8 @@ fn try_load_file(
 fn load_file(
     file_name: &str,
     dst: *mut u8,
-    fs: &mut fat::FileSystem<disk_old::DiskAccess>,
-    disk: &mut disk_old::DiskAccess,
+    fs: &mut FileSystem<DiskReader>,
+    disk: &mut DiskReader,
     disk_buffer: &mut AlignedArrayBuffer<16384>,
 ) -> u64 {
     try_load_file(file_name, dst, fs, disk, disk_buffer).expect("file not found")

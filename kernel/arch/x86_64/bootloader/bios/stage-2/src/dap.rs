@@ -1,56 +1,45 @@
 use core::arch::asm;
 
-#[derive(Debug, Clone, Copy)]
-#[allow(dead_code)]
 #[repr(C, packed)]
-pub struct DiskAddressPacket {
-    /// Size of the DAP structure
-    packet_size: u8,
-    /// always zero
+pub struct DAP {
+    //Packet size
+    size: u8,
+    //Always 0
     zero: u8,
-    /// Number of sectors to transfer
-    number_of_sectors: u16,
-    /// Offset to memory buffer
+    //# of sectors
+    sectors: u16,
+    //Transfer buffer in 16bit segment: 16bit offset format
     offset: u16,
-    /// Segment of memory buffer
     segment: u16,
-    /// Start logical block address
-    start_lba: u64,
+    //LBA is 48 bits, so lower has first 32 and upper has last 16
+    lba: u64
 }
 
-impl DiskAddressPacket {
-    pub fn from_lba(
-        start_lba: u64,
-        number_of_sectors: u16,
-        target_addr: u16,
-        target_addr_segment: u16,
-    ) -> Self {
-        Self {
-            packet_size: 0x10,
+impl DAP {
+    pub fn new(size: u16, address: u32, lba: u64) -> Self {
+        DAP {
+            size: 0x10,
             zero: 0,
-            number_of_sectors,
-            offset: target_addr,
-            segment: target_addr_segment,
-            start_lba,
+            sectors: size,
+            offset: (address & 0b1111) as u16,
+            segment: (address >> 4) as u16,
+            lba
         }
     }
 
-    pub unsafe fn perform_load(&self, disk_number: u16) {
-        let self_addr = self as *const Self as u16;
+    pub unsafe fn load(&self, disk_number: u16) {
+        let address = self as *const DAP as u16;
         asm!(
-            "push 'z'", // error code `z`, passed to `fail` on error
+            // LLVM requires the si register, so save it
             "mov {1:x}, si",
             "mov si, {0:x}",
             "int 0x13",
-            "jnc 2f", // carry is set on fail
-            "call fail",
-            "2:",
-            "pop si", // remove error code again
+            "jc fail",
+            // Re-load si register
             "mov si, {1:x}",
-            in(reg) self_addr,
-            out(reg) _,
-            in("ax") 0x4200u16,
-            in("dx") disk_number,
-        );
+        in(reg) address,
+        out(reg) _,
+        in("ax") 0x4200u16,
+        in("dl") disk_number as u8);
     }
 }
