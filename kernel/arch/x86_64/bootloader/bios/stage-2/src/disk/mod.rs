@@ -1,6 +1,7 @@
 pub mod dap;
 pub mod disk;
 pub mod fat;
+pub mod file;
 
 pub trait Read {
     unsafe fn read_exact(&mut self, len: usize) -> &[u8];

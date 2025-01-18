@@ -86,13 +86,13 @@ pub fn printcharbuf(buf: &[u8]) {
     }
 }
 
-pub fn println(message: &'static str) {
+pub fn println(message: &str) {
     print(message);
     print_char(b'\n');
     print_char(b'\r');
 }
 
-fn print_char(char: u8) {
+pub fn print_char(char: u8) {
     let char = char as u16 | 0xE00;
     unsafe {
         asm!("push bx", "mov bx, 0", "int 0x10", "pop bx", in("ax") char);

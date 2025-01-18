@@ -1,6 +1,7 @@
 // based on https://crates.io/crates/mini_fat by https://github.com/gridbugs
 
 use crate::disk::{AlignedArrayBuffer, AlignedBuffer, Read, Seek, SeekFrom};
+use crate::util::print::{print, printcharbuf, println};
 use core::char::DecodeUtf16Error;
 
 const DIRECTORY_ENTRY_BYTES: usize = 32;
@@ -144,7 +145,7 @@ impl Bpb {
 }
 
 pub struct FileSystem<D> {
-    disk: D,
+    pub disk: D,
     bpb: Bpb,
 }
 

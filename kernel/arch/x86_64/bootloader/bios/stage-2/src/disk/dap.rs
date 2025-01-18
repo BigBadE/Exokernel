@@ -1,4 +1,5 @@
 use core::arch::asm;
+use crate::util::print::{print, print_hex, print_numb, println};
 
 #[derive(Clone)]
 pub struct DiskRead {
