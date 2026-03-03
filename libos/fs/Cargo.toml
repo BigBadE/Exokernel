@@ -1,0 +1,11 @@
+[package]
+name = "libos-fs"
+version = "0.1.0"
+edition = "2024"
+description = "LibOS virtual filesystem"
+
+[dependencies]
+libos-core = { path = "../core" }
+libos-mm = { path = "../mm" }
+libos-sync = { path = "../sync" }
+libos-io = { path = "../io" }

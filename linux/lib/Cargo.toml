@@ -1,0 +1,8 @@
+[package]
+name = "linux-lib"
+version = "0.1.0"
+edition = "2024"
+description = "Linux kernel library functions"
+
+[dependencies]
+linux-core = { path = "../core" }

@@ -1,0 +1,9 @@
+[package]
+name = "libos-sync"
+version = "0.1.0"
+edition = "2024"
+description = "LibOS synchronization primitives"
+
+[dependencies]
+libos-core = { path = "../core" }
+spin = { version = "0.9", default-features = false, features = ["spin_mutex", "rwlock", "once", "lazy"] }

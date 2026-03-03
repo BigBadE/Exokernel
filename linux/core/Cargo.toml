@@ -1,0 +1,8 @@
+[package]
+name = "linux-core"
+version = "0.1.0"
+edition = "2024"
+description = "Core Linux kernel types and error codes"
+
+[dependencies]
+linux-macros = { path = "macros" }

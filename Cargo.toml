@@ -1,37 +1,43 @@
 [package]
 name = "exokernel"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 build = "build.rs"
 
 [workspace]
+resolver = "3"
 members = [
-    # Libraries
-    "lib/*",
-
-    # x86_64 bios bootloader
-    "kernel/arch/x86_64/bootloader/bios/*",
-
-    # Common package
-    "kernel/common"
+    "kernel",
+    "kernel/shared",
+    "kernel/lib",
+    "os",
+    "userland/hello",
+    # Base libOS
+    "libos/core",
+    "libos/mm",
+    "libos/sync",
+    "libos/io",
+    "libos/fs",
+    "libos/time",
+    "libos/lib",
+    # Linux compatibility layer
+    "linux/core/macros",
+    "linux/core",
+    "linux/mm",
+    "linux/sync",
+    "linux/io",
+    "linux/lib",
+    "linux/vfs",
+    "linux/drivers/fat",
 ]
 
+[dependencies]
+ovmf-prebuilt = "0.2.4"
+
 [build-dependencies]
-llvm-tools = "0.1.1"
-
-#File creation utils
-mbrman = { git = "https://github.com/BigBadE/mbrman/" }
-fatfs = "0.3.6"
-anyhow = "1.0.88"
-
-[profile.stage-1]
-inherits = "release"
-opt-level = "s"
-lto = true
-codegen-units = 1
-debug = false
-overflow-checks = false
+bootloader = { version = "0.11", default-features = false, features = ["uefi"] }
+kernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none" }
 
 [profile.release]
 panic = "abort"

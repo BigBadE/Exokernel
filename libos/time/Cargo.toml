@@ -1,0 +1,9 @@
+[package]
+name = "libos-time"
+version = "0.1.0"
+edition = "2024"
+description = "LibOS timekeeping"
+
+[dependencies]
+libos-core = { path = "../core" }
+libos-sync = { path = "../sync" }

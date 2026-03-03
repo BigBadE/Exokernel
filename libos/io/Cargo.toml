@@ -1,0 +1,10 @@
+[package]
+name = "libos-io"
+version = "0.1.0"
+edition = "2024"
+description = "LibOS block I/O and buffer management"
+
+[dependencies]
+libos-core = { path = "../core" }
+libos-mm = { path = "../mm" }
+libos-sync = { path = "../sync" }

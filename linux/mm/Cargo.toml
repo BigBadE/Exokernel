@@ -1,0 +1,10 @@
+[package]
+name = "linux-mm"
+version = "0.1.0"
+edition = "2024"
+description = "Linux kernel memory management shim"
+
+[dependencies]
+linux-core = { path = "../core" }
+libos-core = { path = "../../libos/core" }
+libos-mm = { path = "../../libos/mm" }

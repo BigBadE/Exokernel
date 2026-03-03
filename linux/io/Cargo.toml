@@ -1,0 +1,9 @@
+[package]
+name = "linux-io"
+version = "0.1.0"
+edition = "2024"
+description = "Linux kernel block I/O layer"
+
+[dependencies]
+linux-core = { path = "../core" }
+linux-mm = { path = "../mm" }

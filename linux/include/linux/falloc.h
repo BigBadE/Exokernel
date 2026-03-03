@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+#ifndef _LINUX_FALLOC_H
+#define _LINUX_FALLOC_H
+
+#include <linux/types.h>
+
+/* Fallocate mode flags */
+#define FALLOC_FL_KEEP_SIZE         0x01
+#define FALLOC_FL_PUNCH_HOLE        0x02
+#define FALLOC_FL_NO_HIDE_STALE     0x04
+#define FALLOC_FL_COLLAPSE_RANGE    0x08
+#define FALLOC_FL_ZERO_RANGE        0x10
+#define FALLOC_FL_INSERT_RANGE      0x20
+#define FALLOC_FL_UNSHARE_RANGE     0x40
+
+/* Combined fallocate flags */
+#define FALLOC_FL_ALLOCATE_RANGE    0
+
+#endif /* _LINUX_FALLOC_H */

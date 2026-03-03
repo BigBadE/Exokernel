@@ -1,0 +1,10 @@
+[package]
+name = "libos-core"
+version = "0.1.0"
+edition = "2024"
+description = "Core libOS types and traits"
+
+[features]
+default = []
+
+[dependencies]

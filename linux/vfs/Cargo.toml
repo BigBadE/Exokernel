@@ -1,0 +1,12 @@
+[package]
+name = "linux-vfs"
+version = "0.1.0"
+edition = "2024"
+description = "Linux kernel virtual filesystem layer"
+
+[dependencies]
+linux-core = { path = "../core" }
+linux-mm = { path = "../mm" }
+linux-sync = { path = "../sync" }
+linux-io = { path = "../io" }
+linux-lib = { path = "../lib" }

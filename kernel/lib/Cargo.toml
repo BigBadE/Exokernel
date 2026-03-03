@@ -1,0 +1,8 @@
+[package]
+name = "libexo"
+version = "0.1.0"
+edition = "2024"
+description = "User-space library for Exokernel syscalls and LibOS"
+
+[dependencies]
+exo-shared = { path = "../shared" }

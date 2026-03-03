@@ -1,0 +1,17 @@
+[package]
+name = "linux-fat"
+version = "0.1.0"
+edition = "2024"
+description = "Linux FAT filesystem driver"
+build = "build.rs"
+
+[dependencies]
+linux-core = { path = "../../core" }
+linux-mm = { path = "../../mm" }
+linux-sync = { path = "../../sync" }
+linux-io = { path = "../../io" }
+linux-lib = { path = "../../lib" }
+linux-vfs = { path = "../../vfs" }
+
+[build-dependencies]
+cc = "1.0"

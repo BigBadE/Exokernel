@@ -1,0 +1,11 @@
+[package]
+name = "exo-shared"
+version = "0.1.0"
+edition = "2024"
+description = "Shared types between kernel and userspace for the Exokernel"
+
+[features]
+default = []
+alloc = []
+
+[dependencies]

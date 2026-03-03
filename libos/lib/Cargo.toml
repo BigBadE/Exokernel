@@ -1,0 +1,9 @@
+[package]
+name = "libos-lib"
+version = "0.1.0"
+edition = "2024"
+description = "LibOS utility functions"
+
+[dependencies]
+libos-core = { path = "../core" }
+libos-sync = { path = "../sync" }

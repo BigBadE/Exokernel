@@ -1,1 +1,0 @@
-Provides arch-specific capabilities

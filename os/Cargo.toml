@@ -1,0 +1,28 @@
+[package]
+name = "os"
+version = "0.1.0"
+edition = "2024"
+description = "OS runtime / init process for the Exokernel"
+
+[[bin]]
+name = "os"
+path = "src/main.rs"
+
+[dependencies]
+libexo = { path = "../kernel/lib" }
+exo-shared = { path = "../kernel/shared" }
+
+[profile.release]
+opt-level = "z"
+lto = true
+panic = "abort"
+# Force static relocation model - generates ET_EXEC, not ET_DYN (PIE)
+# This avoids needing to process relocations at load time
+codegen-units = 1
+
+[profile.release.package.init]
+# This ensures init is compiled with static relocation model
+# so it doesn't need dynamic relocation processing
+
+[profile.dev]
+panic = "abort"
